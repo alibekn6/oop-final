@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OOP Final Project — Report</title>
+<style>
+  @page { size: A4; margin: 22mm 20mm; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    font-family: "Times New Roman", Georgia, serif;
+    font-size: 11pt;
+    line-height: 1.45;
+    color: #111;
+    margin: 0;
+  }
+  h1, h2, h3 { font-weight: bold; }
+  h1 { font-size: 20pt; margin: 0 0 8pt; }
+  h2 { font-size: 14pt; margin: 18pt 0 6pt; border-bottom: 1px solid #888; padding-bottom: 2pt; }
+  h3 { font-size: 12pt; margin: 12pt 0 4pt; }
+  p  { margin: 4pt 0; text-align: justify; }
+  ul, ol { margin: 4pt 0 4pt 18pt; padding: 0; }
+  li { margin: 1pt 0; }
+  code { font-family: "Menlo", "Courier New", monospace; font-size: 9.5pt; }
+  pre {
+    font-family: "Menlo", "Courier New", monospace;
+    font-size: 9pt;
+    background: #f4f4f4;
+    border: 1px solid #ddd;
+    padding: 6pt 8pt;
+    margin: 6pt 0;
+    overflow: hidden;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 6pt 0;
+    font-size: 10pt;
+  }
+  th, td {
+    border: 1px solid #888;
+    padding: 4pt 6pt;
+    vertical-align: top;
+    text-align: left;
+  }
+  th { background: #eee; }
+  .title-page {
+    page-break-after: always;
+    text-align: center;
+    padding-top: 60mm;
+  }
+  .title-page h1 { font-size: 22pt; }
+  .title-page .subtitle { font-size: 13pt; margin-top: 6pt; }
+  .title-page .meta { margin-top: 40mm; font-size: 12pt; line-height: 1.7; }
+  .toc { page-break-after: always; }
+  .toc ol { font-size: 11pt; }
+  .section { page-break-before: always; }
+  .placeholder {
+    border: 1px dashed #888;
+    padding: 18pt;
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    margin: 8pt 0;
+  }
+  .small { font-size: 9.5pt; color: #444; }
+  .footer-note { font-size: 9pt; color: #444; margin-top: 24pt; }
+</style>
+</head>
+<body>
+
+<!-- ============== TITLE PAGE ============== -->
+<section class="title-page">
+  <h1>Information System of<br>Research-Oriented University</h1>
+  <div class="subtitle">OOP Final Project — Console Application in Java</div>
+
+  <div class="meta">
+    <div><strong>Team:</strong> 3 members</div>
+    <div>Team leader: Alibek Andanuarbek</div>
+    <div>Member 2: ___________________</div>
+    <div>Member 3: ___________________</div>
+    <br>
+    <div><strong>Course:</strong> Object-Oriented Programming, 2025/26</div>
+    <div><strong>Date:</strong> April 2026</div>
+    <div><strong>Repository:</strong> github.com/alibekn6/oop-final</div>
+  </div>
+</section>
+
+<!-- ============== TABLE OF CONTENTS ============== -->
+<section class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li>Introduction</li>
+    <li>Architecture (Use Case &amp; Class Diagrams)</li>
+    <li>Class Hierarchy</li>
+    <li>Design Patterns</li>
+    <li>Main Flows
+      <ol>
+        <li>Course Registration</li>
+        <li>Putting Marks</li>
+        <li>Research</li>
+      </ol>
+    </li>
+    <li>Custom Exceptions</li>
+    <li>Serialization</li>
+    <li>Project Management — Problems &amp; Solutions</li>
+    <li>Team Communication</li>
+    <li>Conclusion</li>
+  </ol>
+</section>
+
+<!-- ============== 1. INTRODUCTION ============== -->
+<section class="section">
+  <h2>1. Introduction</h2>
+
+  <p>
+    This project is a console-based information system for a research-oriented
+    university, written in Java. It models the people, courses, marks, and
+    research activity of a university and exposes their interactions through a
+    single demo class. The project is the final deliverable of the
+    Object-Oriented Programming course and is built around a strict scope laid
+    out in the team’s technical specification: 12 mandatory classes, four
+    mandatory user-facing flows (authentication, course registration,
+    marking, research), serialization of all state, and at least four design
+    patterns.
+  </p>
+
+  <p>
+    Production-ready behaviour was an explicit non-goal. The brief is to
+    demonstrate object-oriented thinking — abstract types and interfaces,
+    encapsulation, controlled use of inheritance, composition where
+    inheritance does not fit, custom checked exceptions, the Java
+    Collections framework, and serialization. Where the spec gave us a
+    choice (for example, “Researcher could be an interface, an abstract
+    class, or a Decorator — figure it out”), we made the pragmatic call and
+    document it in this report.
+  </p>
+
+  <p>
+    The system has 26 source files arranged in seven packages under
+    <code>com.uni</code>. A single class, <code>UniversityDemo</code>,
+    runs every required scenario end-to-end and prints results to the
+    console — including the failure paths that throw our four custom
+    exceptions.
+  </p>
+</section>
+
+<!-- ============== 2. ARCHITECTURE ============== -->
+<section class="section">
+  <h2>2. Architecture</h2>
+
+  <h3>2.1 Package layout</h3>
+  <pre>src/com/uni/
+├── enums/         8 enums  (Language, LessonType, TeacherTitle, ...)
+├── exceptions/    4 custom exceptions
+├── models/        14 classes  (User hierarchy, academic, research)
+├── comparators/   3 Comparator&lt;ResearchPaper&gt; strategies
+├── factory/       UserFactory  (Factory pattern)
+├── storage/       DataStore    (Singleton + persistence)
+└── UniversityDemo.java</pre>
+
+  <p>
+    The packaging is layered: <code>enums</code> and
+    <code>exceptions</code> have no internal dependencies; <code>models</code>
+    depends only on <code>enums</code> and <code>exceptions</code>;
+    <code>comparators</code>, <code>factory</code>, and
+    <code>storage</code> depend on <code>models</code>. This keeps the
+    coupling acyclic and easy to reason about.
+  </p>
+
+  <h3>2.2 Use Case diagram</h3>
+  <p>
+    Actors: Admin, Manager, Teacher, Student, and Researcher (a role any
+    User can take on). The full diagram, drawn in StarUML, is exported
+    to <code>diagrams/use-case.png</code>.
+  </p>
+  <div class="placeholder">[ Insert use-case diagram image here ]</div>
+
+  <h3>2.3 Class diagram</h3>
+  <p>
+    The class diagram, also drawn in StarUML, is exported to
+    <code>diagrams/class-diagram.png</code>. The source file is
+    <code>classdiOOPFINAL.mdj</code> and was kept in sync with the
+    code via reverse engineering.
+  </p>
+  <div class="placeholder">[ Insert class diagram image here ]</div>
+</section>
+
+<!-- ============== 3. CLASS HIERARCHY ============== -->
+<section class="section">
+  <h2>3. Class Hierarchy</h2>
+
+  <p>The user inheritance tree:</p>
+  <pre>User (abstract, Serializable)
+├── Employee (abstract)
+│   ├── Teacher              implements Researcher
+│   ├── Manager
+│   ├── Admin
+│   └── ResearcherEmployee   implements Researcher
+└── Student                  implements Researcher
+
+Researcher (interface, extends Serializable)
+└── ResearcherDecorator implements Researcher  (wraps any User)</pre>
+
+  <h3>3.1 User (abstract)</h3>
+  <p>
+    The base of every person in the system. It owns the credentials and
+    name fields and exposes a plain <code>login(login, password)</code>
+    method used by the authentication flow.
+  </p>
+<pre>public abstract class User implements Serializable {
+    protected long id;
+    protected String login;
+    protected String password;
+    protected String firstName;
+    protected String lastName;
+    protected Language language;
+
+    public boolean login(String login, String password) {
+        return Objects.equals(this.login, login)
+                &amp;&amp; Objects.equals(this.password, password);
+    }
+}</pre>
+
+  <h3>3.2 Employee and its concrete subclasses</h3>
+  <p>
+    <code>Employee</code> adds salary, hire date, and an inbox of
+    <code>Message</code>s. Its concrete subclasses are
+    <code>Teacher</code>, <code>Manager</code>, <code>Admin</code>, and
+    <code>ResearcherEmployee</code>.
+  </p>
+
+  <table>
+    <tr><th>Class</th><th>Responsibilities</th></tr>
+    <tr><td>Teacher</td><td>Owns active courses; can put marks (3 attestations); rates accumulate; if PROFESSOR — automatically a Researcher.</td></tr>
+    <tr><td>Manager</td><td>Adds courses; assigns instructors; approves student registrations; produces statistical reports; promotes any User to Researcher via Decorator.</td></tr>
+    <tr><td>Admin</td><td>Adds, removes, and updates users; reads audit logs.</td></tr>
+    <tr><td>ResearcherEmployee</td><td>Employee whose only role is research. Always a Researcher.</td></tr>
+  </table>
+
+  <h3>3.3 Student</h3>
+  <p>
+    Bachelor student (years 1..4). Holds a transcript
+    (<code>Map&lt;Course, Mark&gt;</code>), credit and fail counters, an
+    optional <code>Researcher</code> supervisor (only meaningful at
+    year 4), and an optional researcher role gated by a flag. All three
+    invariants — credit cap, fail cap, supervisor h-index — are enforced
+    by checked exceptions.
+  </p>
+<pre>public class Student extends User implements Researcher {
+    public static final int MAX_CREDITS = 21;
+    public static final int MAX_FAILS   = 3;
+    private final Map&lt;Course, Mark&gt; transcript = new LinkedHashMap&lt;&gt;();
+    private Researcher supervisor;
+    ...
+}</pre>
+
+  <h3>3.4 Researcher (interface)</h3>
+  <p>
+    Anyone capable of doing research. Extends
+    <code>Serializable</code> so any list of researchers can be saved.
+  </p>
+<pre>public interface Researcher extends Serializable {
+    double calculateHIndex();
+    void   printPapers(Comparator&lt;ResearchPaper&gt; comparator);
+    List&lt;ResearchPaper&gt; getPapers();
+    void   publishPaper(ResearchPaper paper);
+    String getResearcherName();
+    default boolean isResearcher() { return true; }
+}</pre>
+
+  <h3>3.5 Course / Mark / Lesson</h3>
+  <p>
+    <code>Course</code> implements <code>Comparable&lt;Course&gt;</code>
+    and supports multiple lecture and practice instructors.
+    <code>Mark</code> stores three attestation scores (max 30/30/40),
+    computes the total and a letter grade, and exposes
+    <code>isPassed()</code>. <code>Lesson</code> couples a course with a
+    type (LECTURE/PRACTICE), room, and schedule.
+  </p>
+
+  <h3>3.6 Research models</h3>
+  <p>
+    <code>ResearchPaper</code> is <code>Comparable&lt;ResearchPaper&gt;</code>
+    (newest first by default) and exposes
+    <code>getCitation(CitationFormat)</code> for both PLAIN_TEXT and
+    BibTeX. <code>ResearchProject</code> validates new participants and
+    rejects non-researchers.
+  </p>
+
+  <h3>3.7 Why Researcher is an interface, not a class</h3>
+  <p>
+    The brief deliberately leaves this open. We chose
+    <em>interface plus optional Decorator</em>:
+  </p>
+  <ul>
+    <li><strong>Interface</strong>, because being a researcher is a role
+      that crosses the regular User hierarchy: a Teacher, a Student, or a
+      plain Employee can all hold the role. Forcing them to share a
+      common abstract <em>class</em> would have broken the User tree.</li>
+    <li><strong>Decorator</strong> (<code>ResearcherDecorator</code>),
+      because the spec asks the Manager to be able to grant the role to
+      <em>any</em> User at runtime without recompiling them. Wrapping
+      with a decorator gives that without modifying the wrapped class.</li>
+  </ul>
+</section>
+
+<!-- ============== 4. DESIGN PATTERNS ============== -->
+<section class="section">
+  <h2>4. Design Patterns</h2>
+
+  <h3>4.1 Singleton — DataStore</h3>
+  <p>
+    The system has a single source of truth for state, so only one
+    <code>DataStore</code> instance exists. The constructor is private;
+    a synchronised <code>getInstance()</code> hands it out.
+  </p>
+<pre>public class DataStore implements Serializable {
+    private static DataStore instance;
+    private DataStore() {}
+    public static synchronized DataStore getInstance() {
+        if (instance == null) instance = new DataStore();
+        return instance;
+    }
+}</pre>
+
+  <h3>4.2 Factory — UserFactory</h3>
+  <p>
+    Creating five different User subclasses through one entry point keeps
+    the demo and admin-add-user paths simple. The
+    <code>UserType</code> enum decides which subclass to instantiate.
+  </p>
+<pre>public static User createUser(UserType type, long id,
+                              String login, String password,
+                              String firstName, String lastName,
+                              String email, Language language,
+                              Object... extra) {
+    switch (type) {
+        case STUDENT:             return new Student(...);
+        case TEACHER:             return new Teacher(...);
+        case MANAGER:             return new Manager(...);
+        case ADMIN:               return new Admin(...);
+        case RESEARCHER_EMPLOYEE: return new ResearcherEmployee(...);
+    }
+}</pre>
+
+  <h3>4.3 Decorator — ResearcherDecorator</h3>
+  <p>
+    Lets the Manager promote any User into a Researcher at runtime
+    without changing that user’s class.
+  </p>
+<pre>public class ResearcherDecorator implements Researcher, Serializable {
+    private final User originalUser;
+    private final List&lt;ResearchPaper&gt; papers = new ArrayList&lt;&gt;();
+    public ResearcherDecorator(User user) { this.originalUser = user; }
+    public void publishPaper(ResearchPaper p) { papers.add(p); }
+    ...
+}
+
+// Manager.makeResearcher
+Researcher r = new ResearcherDecorator(someUser);
+DataStore.getInstance().addResearcher(r);</pre>
+
+  <h3>4.4 Strategy — Paper Comparators</h3>
+  <p>
+    <code>Researcher.printPapers(Comparator c)</code> takes a sorting
+    strategy at runtime. Three concrete strategies are provided.
+  </p>
+<pre>researcher.printPapers(new DateComparator());        // newest first
+researcher.printPapers(new CitationsComparator());   // most cited first
+researcher.printPapers(new PaperLengthComparator()); // longest first</pre>
+</section>
+
+<!-- ============== 5. MAIN FLOWS ============== -->
+<section class="section">
+  <h2>5. Main Flows</h2>
+
+  <h3>5.1 Course Registration</h3>
+  <p>The flow is split between the student (who initiates) and the
+    Manager (who finalises). Three invariants are enforced:</p>
+  <ul>
+    <li>Total credits ≤ <code>MAX_CREDITS</code> (21) — else
+      <code>CreditLimitException</code>.</li>
+    <li>Fail count &lt; <code>MAX_FAILS</code> (3) — else
+      <code>MaxFailedReachedException</code>.</li>
+    <li>Course target year matches student’s year (warning only).</li>
+  </ul>
+<pre>// 1) student initiates
+student.registerForCourse(course);
+// 2) manager finalises
+manager.approveRegistration(student, course);
+// → adds student to course.students,
+//   creates a fresh Mark(0, 0, 0) in transcript,
+//   adds course.credits to currentCredits</pre>
+
+  <h3>5.2 Putting Marks</h3>
+  <p>
+    A Teacher writes one of three attestation scores into the existing
+    Mark; on a failed final the Student’s fail counter increments and
+    can throw <code>MaxFailedReachedException</code>.
+  </p>
+<pre>teacher.putMark(student, course, 1, 25);   // 1st att, max 30
+teacher.putMark(student, course, 2, 22);   // 2nd att, max 30
+teacher.putMark(student, course, 3, 30);   // final,   max 40</pre>
+
+  <p>Letter grade is derived from the total:</p>
+  <table>
+    <tr><th>Total</th><th>Letter</th></tr>
+    <tr><td>≥ 90</td><td>A</td></tr>
+    <tr><td>≥ 75</td><td>B</td></tr>
+    <tr><td>≥ 60</td><td>C</td></tr>
+    <tr><td>≥ 50</td><td>D</td></tr>
+    <tr><td>&lt; 50</td><td>F (failed)</td></tr>
+  </table>
+
+  <h3>5.3 Research</h3>
+  <p>The research flow combines four operations:</p>
+  <ul>
+    <li><strong>Publish:</strong>
+      <code>researcher.publishPaper(paper)</code></li>
+    <li><strong>Sort &amp; print:</strong>
+      <code>researcher.printPapers(comparator)</code> — Strategy.</li>
+    <li><strong>H-index:</strong> standard definition — largest <em>h</em>
+      such that <em>h</em> papers have ≥ <em>h</em> citations each.</li>
+    <li><strong>Top cited researcher:</strong>
+      <code>DataStore.printTopCitedResearcher()</code> sums citations
+      across each researcher’s papers and picks the maximum.</li>
+  </ul>
+<pre>static double hIndex(List&lt;ResearchPaper&gt; papers) {
+    List&lt;ResearchPaper&gt; sorted = new ArrayList&lt;&gt;(papers);
+    sorted.sort((a, b) -&gt; Integer.compare(b.getCitations(), a.getCitations()));
+    int h = 0;
+    for (int i = 0; i &lt; sorted.size(); i++) {
+        if (sorted.get(i).getCitations() &gt;= i + 1) h = i + 1;
+        else break;
+    }
+    return h;
+}</pre>
+</section>
+
+<!-- ============== 6. CUSTOM EXCEPTIONS ============== -->
+<section class="section">
+  <h2>6. Custom Exceptions</h2>
+
+  <p>All four are checked (<code>extends Exception</code>) — they
+    represent business rule violations the caller must handle.</p>
+
+  <table>
+    <tr><th>Exception</th><th>Thrown when</th><th>Thrown from</th></tr>
+    <tr>
+      <td>LowHIndexException</td>
+      <td>Supervisor’s h-index &lt; 3</td>
+      <td>Student.setSupervisor</td>
+    </tr>
+    <tr>
+      <td>NotAResearcherException</td>
+      <td>Non-researcher tries to join a project</td>
+      <td>ResearchProject.addParticipant</td>
+    </tr>
+    <tr>
+      <td>CreditLimitException</td>
+      <td>Student would exceed 21 credits</td>
+      <td>Student.registerForCourse</td>
+    </tr>
+    <tr>
+      <td>MaxFailedReachedException</td>
+      <td>Student fails for the 3rd time, or tries to register with 3 fails</td>
+      <td>Student.registerForCourse, Student.recordFail, Teacher.putMark</td>
+    </tr>
+  </table>
+
+  <p>The demo deliberately exercises every one of these.</p>
+</section>
+
+<!-- ============== 7. SERIALIZATION ============== -->
+<section class="section">
+  <h2>7. Serialization</h2>
+
+  <p>
+    Persistence is handled by <code>DataStore.save()</code> and
+    <code>DataStore.load()</code>. Java’s built-in object serialization
+    is used: every persistent class implements
+    <code>Serializable</code>, including the <code>Researcher</code>
+    interface and the three <code>Comparator</code>s. The default file is
+    <code>data.ser</code>.
+  </p>
+<pre>public void save(String path) {
+    try (ObjectOutputStream oos =
+             new ObjectOutputStream(new FileOutputStream(path))) {
+        oos.writeObject(this);
+    } catch (IOException e) { ... }
+}
+
+public static DataStore load(String path) {
+    try (ObjectInputStream ois =
+             new ObjectInputStream(new FileInputStream(path))) {
+        instance = (DataStore) ois.readObject();
+        return instance;
+    } catch (IOException | ClassNotFoundException e) { ... }
+}</pre>
+
+  <p>
+    The demo verifies a complete round-trip: it saves, calls
+    <code>DataStore.resetForTesting()</code> (wiping the singleton in
+    memory), then <code>load()</code>s and re-prints a transcript. All
+    object graph relations — students ↔ marks ↔ courses ↔ teachers —
+    survive intact.
+  </p>
+</section>
+
+<!-- ============== 8. PROJECT MANAGEMENT ============== -->
+<section class="section">
+  <h2>8. Project Management — Problems and Solutions</h2>
+
+  <h3>8.1 Splitting work between three people</h3>
+  <p>
+    The team divided the codebase along three vertical slices that
+    share the same User abstract base but otherwise touch disjoint
+    files:
+  </p>
+  <ul>
+    <li><strong>Member 1 (team lead):</strong> User hierarchy,
+      Employee subclasses, <code>DataStore</code>,
+      <code>UserFactory</code>, all enums, authentication.</li>
+    <li><strong>Member 2:</strong> Student, Course, Mark, Lesson, the
+      registration and marking flows, two of the custom exceptions.</li>
+    <li><strong>Member 3:</strong> Researcher interface,
+      ResearcherDecorator, ResearchPaper, ResearchProject, the three
+      paper comparators, and the two research-related exceptions.</li>
+  </ul>
+
+  <h3>8.2 Concrete problems we hit</h3>
+
+  <p>
+    <strong>Naming clash on <code>getTranscript()</code>.</strong>
+    The spec listed both <code>getTranscript(): String</code> (printable
+    report) and a transcript field of type
+    <code>Map&lt;Course, Mark&gt;</code> with implied accessor. Java
+    cannot have two methods of the same name returning different types,
+    so the map accessor was renamed to
+    <code>getTranscriptMap()</code> and all internal callers (Course,
+    Manager, Teacher) were updated.
+  </p>
+
+  <p>
+    <strong>How to model Researcher.</strong> The spec was
+    deliberately ambiguous. We rejected an abstract class because it
+    would have collided with the Employee/User hierarchy — a Student
+    cannot also extend ResearcherBase. We chose an interface plus a
+    Decorator (see §3.7) so the role can be both compile-time
+    (Teacher/Student/ResearcherEmployee implementing it directly) and
+    runtime (Manager wrapping any User).</p>
+
+  <p>
+    <strong>Spurious lint warnings on <code>List&lt;User&gt;</code> and
+    similar.</strong> Java’s <code>-Xlint:serial</code> reports a
+    “non-transient instance field declared with a non-serializable type”
+    even when the parameter type implements Serializable, because the
+    static type is an abstract class. We made the
+    <code>Researcher</code> interface extend
+    <code>Serializable</code> to silence that subset; the rest are
+    benign and do not affect runtime behaviour.
+  </p>
+
+  <p>
+    <strong>De-duplicating researchers in <code>DataStore</code>.</strong>
+    A user can be both a Teacher (Researcher by interface) and wrapped
+    by a ResearcherDecorator. Listing both would double-count their
+    papers. <code>getAllResearchers()</code> deduplicates by tracking
+    the underlying User of each decorator and skipping the user’s own
+    direct entry when they are wrapped.
+  </p>
+
+  <h3>8.3 Git workflow</h3>
+  <p>
+    All work was done on <code>main</code> with frequent rebases.
+    Commits were grouped by logical layer rather than by file count: a
+    full snapshot of the code reaches the repository in seven commits
+    (project setup → enums + exceptions → User hierarchy → academic +
+    infra models → research models → factory + DataStore → demo).
+  </p>
+</section>
+
+<!-- ============== 9. TEAM CHAT ============== -->
+<section class="section">
+  <h2>9. Team Communication</h2>
+  <p>
+    Day-to-day coordination took place in a Telegram group. Screenshots
+    are attached below.
+  </p>
+  <div class="placeholder">[ Telegram chat screenshot 1 ]</div>
+  <div class="placeholder">[ Telegram chat screenshot 2 ]</div>
+</section>
+
+<!-- ============== 10. CONCLUSION ============== -->
+<section class="section">
+  <h2>10. Conclusion</h2>
+
+  <p>
+    The system meets every requirement of the technical specification:
+    all 12 mandatory classes, the four required flows
+    (authentication, course registration, marking, research), four
+    design patterns (Singleton, Factory, Decorator, Strategy), four
+    custom exceptions, full Java serialization, and a demo class that
+    walks every scenario including the failure paths.
+  </p>
+
+  <p>
+    From a learning perspective, the most useful lessons were
+    <em>where not to inherit</em> (Researcher across the User tree),
+    the difference between compile-time and runtime polymorphism
+    (interface vs. Decorator), and the cost of getting equals,
+    hashCode, and Comparable consistent with serialization round-trips.
+  </p>
+
+  <p>
+    What did not make it into scope: schedule generation, attendance,
+    regex-based search, recommendation letters, and a real
+    multi-language UI. They are deliberately listed in the technical
+    spec as “time permitting” items.
+  </p>
+
+  <div class="footer-note">
+    Source code, demo output, and this report are available in the
+    project repository.
+  </div>
+</section>
+
+</body>
+</html>
