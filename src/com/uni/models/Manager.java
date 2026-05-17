@@ -2,11 +2,13 @@ package com.uni.models;
 
 import com.uni.enums.Language;
 import com.uni.enums.ManagerType;
+import com.uni.enums.RequestStatus;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Academic manager. Approves registrations, assigns teachers to courses,
@@ -106,5 +108,53 @@ public class Manager extends Employee {
         ResearcherDecorator decorator = new ResearcherDecorator(user);
         com.uni.storage.DataStore.getInstance().addResearcher(decorator);
         return decorator;
+    }
+
+    /* ===================== News management ===================== */
+
+    /** Publishes a new news entry authored by this manager. */
+    public News manageNews(String topic, String content, boolean pinned) {
+        com.uni.storage.DataStore ds = com.uni.storage.DataStore.getInstance();
+        News news = new News(ds.nextNewsId(), topic, content, this);
+        news.setPinned(pinned);
+        ds.addNews(news);
+        return news;
+    }
+
+    public void pinNews(News news, boolean pinned) {
+        if (news != null) news.setPinned(pinned);
+    }
+
+    public void removeNews(News news) {
+        com.uni.storage.DataStore.getInstance().removeNews(news);
+    }
+
+    /* ===================== Employee requests ===================== */
+
+    /**
+     * Returns all employee requests, optionally filtered by status.
+     * Requests start as PENDING; the manager (dean/rector) signs and
+     * then approves or rejects them.
+     */
+    public List<Request> viewRequests(RequestStatus filter) {
+        List<Request> all = com.uni.storage.DataStore.getInstance().getRequests();
+        if (filter == null) return new ArrayList<>(all);
+        return all.stream()
+                .filter(r -> r.getStatus() == filter)
+                .collect(Collectors.toList());
+    }
+
+    public List<Request> viewRequests() { return viewRequests(null); }
+
+    public void signRequest(Request request) {
+        if (request != null) request.sign();
+    }
+
+    public void approveRequest(Request request, String note) {
+        if (request != null) request.approve(note);
+    }
+
+    public void rejectRequest(Request request, String note) {
+        if (request != null) request.reject(note);
     }
 }

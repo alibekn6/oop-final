@@ -32,6 +32,7 @@ public class Student extends User implements Researcher {
     private final Map<Course, Mark> transcript = new LinkedHashMap<>();
     private Researcher supervisor;        // only meaningful for 4th-year students
     private boolean researcherFlag;
+    private boolean graduated;
 
     private final List<ResearchPaper> papers = new ArrayList<>();
     private final List<ResearchProject> projects = new ArrayList<>();
@@ -56,6 +57,7 @@ public class Student extends User implements Researcher {
     public int getFailCount()           { return failCount; }
     public Map<Course, Mark> getTranscriptMap() { return Collections.unmodifiableMap(transcript); }
     public Researcher getSupervisor()   { return supervisor; }
+    public boolean isGraduated()        { return graduated; }
 
     public void setYearOfStudy(int year) { this.yearOfStudy = year; }
     public void setMajor(String major)   { this.major = major; }
@@ -67,6 +69,10 @@ public class Student extends User implements Researcher {
      */
     public void registerForCourse(Course course)
             throws CreditLimitException, MaxFailedReachedException {
+        if (graduated) {
+            throw new IllegalStateException(
+                    getFullName() + " has graduated and cannot register for courses.");
+        }
         if (failCount >= MAX_FAILS) {
             throw new MaxFailedReachedException(
                     getFullName() + " has " + failCount
@@ -87,8 +93,23 @@ public class Student extends User implements Researcher {
 
     /** Quick check used by UI/listings — same logic as registerForCourse. */
     public boolean canRegisterFor(Course course) {
-        return failCount < MAX_FAILS
+        return !graduated
+                && failCount < MAX_FAILS
                 && currentCredits + course.getCredits() <= MAX_CREDITS;
+    }
+
+    /**
+     * Mark the student as graduated. Only 4th-year students can graduate.
+     * Once graduated, the student can no longer register for new courses,
+     * but their transcript remains accessible.
+     */
+    public void graduate() {
+        if (yearOfStudy != 4) {
+            throw new IllegalStateException(
+                    "Only 4th-year students can graduate (current year: "
+                            + yearOfStudy + ").");
+        }
+        this.graduated = true;
     }
 
     /** Called by Manager when registration is approved. */

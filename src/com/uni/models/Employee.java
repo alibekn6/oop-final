@@ -55,4 +55,16 @@ public abstract class Employee extends User {
     public Date getHireDate()    { return hireDate; }
 
     public void setSalary(double salary) { this.salary = salary; }
+
+    /**
+     * Submits a request to the dean/rector. The request is stored in the
+     * DataStore with status PENDING; managers can review, sign and resolve
+     * it via {@link Manager#viewRequests()}.
+     */
+    public Request submitRequest(String subject, String body) {
+        com.uni.storage.DataStore ds = com.uni.storage.DataStore.getInstance();
+        Request request = new Request(ds.nextRequestId(), this, subject, body);
+        ds.addRequest(request);
+        return request;
+    }
 }

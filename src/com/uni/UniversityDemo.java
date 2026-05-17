@@ -83,6 +83,9 @@ public class UniversityDemo {
         section("10. PERSISTENCE — SAVE / LOAD");
         demoPersistence(ds);
 
+        section("11. NEWS, REQUESTS & GRADUATION");
+        demoNewsRequestsGraduation(ds);
+
         section("DONE");
     }
 
@@ -392,6 +395,56 @@ public class UniversityDemo {
             Student s = (Student) alibek;
             System.out.println("Restored student transcript:");
             System.out.println(s.getTranscript());
+        }
+    }
+
+    private static void demoNewsRequestsGraduation(DataStore ignored) {
+        // Section 10 reloaded the singleton from disk, so re-fetch.
+        DataStore ds = DataStore.getInstance();
+        Manager manager = (Manager) findUser(ds, "manager");
+        Teacher teacher = (Teacher) findUser(ds, "prof.smith");
+        Student alibek = (Student) findUser(ds, "alibek");
+
+        // News (Manage news per spec).
+        com.uni.models.News pinned = manager.manageNews(
+                "Spring semester schedule",
+                "Final exam schedule is published on the portal.",
+                true);
+        com.uni.models.News casual = manager.manageNews(
+                "Research seminar Friday",
+                "Open invitation to the AI seminar on Friday at 5pm.",
+                false);
+        pinned.addComment(new com.uni.models.Comment(alibek, "Thanks!"));
+        System.out.println("News published: " + ds.getNews().size());
+        for (com.uni.models.News n : ds.getNews()) System.out.println("  " + n);
+
+        // Employee request (View requests from employees, signed by dean/rector).
+        com.uni.models.Request req = teacher.submitRequest(
+                "Equipment for lab",
+                "Need a projector replacement in room 312.");
+        System.out.println("Submitted: " + req);
+        System.out.println("Pending: "
+                + manager.viewRequests(com.uni.enums.RequestStatus.PENDING).size());
+        manager.signRequest(req);
+        manager.approveRequest(req, "Approved — order placed");
+        System.out.println("Resolved: " + req + " — " + req.getResolutionNote());
+
+        // Graduation: a 4th-year student finishes.
+        if (alibek.getYearOfStudy() == 4) {
+            alibek.graduate();
+        } else {
+            alibek.setYearOfStudy(4);
+            alibek.graduate();
+        }
+        System.out.println(alibek.getFullName()
+                + " graduated? " + alibek.isGraduated());
+        // After graduation: registration is blocked.
+        try {
+            Course any = ds.getCourses().get(0);
+            alibek.registerForCourse(any);
+            System.out.println("ERROR: graduated student registered");
+        } catch (Exception ex) {
+            System.out.println("Expected block: " + ex.getMessage());
         }
     }
 

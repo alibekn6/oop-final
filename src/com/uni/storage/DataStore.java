@@ -2,6 +2,8 @@ package com.uni.storage;
 
 import com.uni.models.Course;
 import com.uni.models.Message;
+import com.uni.models.News;
+import com.uni.models.Request;
 import com.uni.models.ResearchPaper;
 import com.uni.models.ResearchProject;
 import com.uni.models.Researcher;
@@ -41,10 +43,14 @@ public class DataStore implements Serializable {
     private final List<ResearchProject> projects  = new ArrayList<>();
     private final List<UserAction>      logs      = new ArrayList<>();
     private final List<Message>         messages  = new ArrayList<>();
+    private final List<News>            news      = new ArrayList<>();
+    private final List<Request>         requests  = new ArrayList<>();
     /** Decorator-style researchers that are not Users themselves. */
     private final List<Researcher>      decorators = new ArrayList<>();
 
     private long nextLogId = 1;
+    private long nextNewsId = 1;
+    private long nextRequestId = 1;
 
     private DataStore() {}
 
@@ -178,6 +184,31 @@ public class DataStore implements Serializable {
 
     public List<Message> getMessages() {
         return Collections.unmodifiableList(messages);
+    }
+
+    /* ===================== News / Requests ===================== */
+
+    public long nextNewsId()    { return nextNewsId++; }
+    public long nextRequestId() { return nextRequestId++; }
+
+    public void addNews(News n) {
+        if (n != null && !news.contains(n)) news.add(n);
+    }
+
+    public void removeNews(News n) {
+        if (n != null) news.remove(n);
+    }
+
+    public List<News> getNews() {
+        return Collections.unmodifiableList(news);
+    }
+
+    public void addRequest(Request r) {
+        if (r != null && !requests.contains(r)) requests.add(r);
+    }
+
+    public List<Request> getRequests() {
+        return Collections.unmodifiableList(requests);
     }
 
     /* ===================== Authentication ===================== */

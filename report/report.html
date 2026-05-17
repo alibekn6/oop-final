@@ -100,6 +100,7 @@
         <li>Course Registration</li>
         <li>Putting Marks</li>
         <li>Research</li>
+        <li>News, Employee Requests &amp; Graduation</li>
       </ol>
     </li>
     <li>Custom Exceptions</li>
@@ -138,11 +139,12 @@
   </p>
 
   <p>
-    The system has 26 source files arranged in seven packages under
+    The system has 30 source files arranged in seven packages under
     <code>com.uni</code>. A single class, <code>UniversityDemo</code>,
-    runs every required scenario end-to-end and prints results to the
-    console — including the failure paths that throw our four custom
-    exceptions.
+    runs every required scenario end-to-end across <strong>11 sections</strong>
+    and prints results to the console — including the failure paths that
+    throw our four custom exceptions, the news / employee-request flow,
+    and the graduation transition.
   </p>
 </section>
 
@@ -152,9 +154,9 @@
 
   <h3>2.1 Package layout</h3>
   <pre>src/com/uni/
-├── enums/         8 enums  (Language, LessonType, TeacherTitle, ...)
+├── enums/         9 enums  (Language, LessonType, TeacherTitle, RequestStatus, ...)
 ├── exceptions/    4 custom exceptions
-├── models/        14 classes  (User hierarchy, academic, research)
+├── models/        17 classes  (User hierarchy, academic, research, news/requests)
 ├── comparators/   3 Comparator&lt;ResearchPaper&gt; strategies
 ├── factory/       UserFactory  (Factory pattern)
 ├── storage/       DataStore    (Singleton + persistence)
@@ -289,7 +291,20 @@ Researcher (interface, extends Serializable)
     rejects non-researchers.
   </p>
 
-  <h3>3.7 Why Researcher is an interface, not a class</h3>
+  <h3>3.7 News, Comment &amp; Request</h3>
+  <p>
+    <code>News</code> models a manager-published announcement with a topic,
+    content body, pinned flag, author, timestamp, and a list of
+    <code>Comment</code> objects (author + text + date). <code>Request</code>
+    represents an employee request that has to be signed by the dean/rector
+    before being approved or rejected; it carries a <code>RequestStatus</code>
+    enum (<em>PENDING → SIGNED → APPROVED/REJECTED</em>) and enforces the
+    state machine internally. All three classes are
+    <code>Serializable</code> and stored in the <code>DataStore</code>
+    singleton alongside users, courses, logs, and messages.
+  </p>
+
+  <h3>3.8 Why Researcher is an interface, not a class</h3>
   <p>
     The brief deliberately leaves this open. We chose
     <em>interface plus optional Decorator</em>:
@@ -437,6 +452,48 @@ teacher.putMark(student, course, 3, 30);   // final,   max 40</pre>
     }
     return h;
 }</pre>
+
+  <h3>5.4 News, Employee Requests &amp; Graduation</h3>
+  <p>
+    Three short flows that round out the manager-side scope of the brief
+    (“Manager: Manage news”; “View requests from employees, signed by
+    dean/rector”) and the student lifecycle.
+  </p>
+
+  <p><strong>News.</strong> A <code>Manager</code> publishes news entries
+    via <code>manageNews(topic, content, pinned)</code>. Each <code>News</code>
+    instance has an id, author, timestamp, a pinned flag, and a list of
+    <code>Comment</code> objects. News are stored in the
+    <code>DataStore</code> singleton; pinning is just a boolean toggle.
+  </p>
+<pre>News pinned = manager.manageNews("Spring semester schedule",
+        "Final exam schedule is published on the portal.", true);
+pinned.addComment(new Comment(student, "Thanks!"));</pre>
+
+  <p><strong>Employee requests.</strong> Any <code>Employee</code> can call
+    <code>submitRequest(subject, body)</code>; the request enters the
+    <code>DataStore</code> with status <code>PENDING</code>. The
+    <code>Manager</code> (acting as dean/rector) reviews via
+    <code>viewRequests(RequestStatus.PENDING)</code>, then
+    <code>signRequest(r)</code> moves it to <code>SIGNED</code>, after which
+    <code>approveRequest</code> or <code>rejectRequest</code> finalises it.
+    The transitions are enforced inside <code>Request</code> itself —
+    illegal moves throw <code>IllegalStateException</code>.
+  </p>
+<pre>Request r = teacher.submitRequest("Equipment for lab", "Need a projector …");
+manager.signRequest(r);
+manager.approveRequest(r, "Approved — order placed");</pre>
+
+  <p><strong>Graduation.</strong> The brief mentions 4th-year students with
+    a research supervisor but says nothing about post-graduation, so we
+    modelled the transition with a single boolean flag rather than a
+    separate <code>Alumni</code> class. <code>Student.graduate()</code> can
+    only be called on a 4th-year student; once set,
+    <code>registerForCourse</code> throws and
+    <code>canRegisterFor</code> returns false. The transcript and any
+    research papers remain accessible, so the student record is still
+    useful for future recommendation letters.
+  </p>
 </section>
 
 <!-- ============== 6. CUSTOM EXCEPTIONS ============== -->

@@ -8,3 +8,5 @@ docs/
 *.iml
 .vscode/
 target/
+notes/
+sources.txt
