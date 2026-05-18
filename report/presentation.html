@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OOP Final — Presentation</title>
+<style>
+  @page {
+    size: 33.867cm 19.05cm;            /* 16:9 landscape */
+    margin: 0;
+  }
+  html, body {
+    margin: 0;
+    padding: 0;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 14pt;
+    color: #1a1a1a;
+    background: #ffffff;
+  }
+  .slide {
+    width: 33.867cm;
+    height: 19.05cm;
+    box-sizing: border-box;
+    padding: 1.6cm 2.2cm;
+    page-break-after: always;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  .slide:last-child { page-break-after: auto; }
+
+  h1 {
+    font-size: 32pt;
+    font-weight: 700;
+    margin: 0 0 0.4cm 0;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+  }
+  h2 {
+    font-size: 20pt;
+    font-weight: 600;
+    margin: 0 0 0.6cm 0;
+    padding-bottom: 0.25cm;
+    border-bottom: 1px solid #333;
+    letter-spacing: -0.005em;
+  }
+  h3 {
+    font-size: 14pt;
+    font-weight: 600;
+    margin: 0.4cm 0 0.2cm 0;
+    color: #333;
+  }
+  p { margin: 0.2cm 0; line-height: 1.45; }
+  ul, ol { margin: 0.2cm 0 0.2cm 0.6cm; padding: 0; }
+  li { margin: 0.15cm 0; line-height: 1.4; }
+
+  code, pre {
+    font-family: "Menlo", "Courier New", monospace;
+    font-size: 11pt;
+  }
+  pre {
+    background: #f5f5f5;
+    border-left: 3px solid #999;
+    padding: 0.4cm 0.5cm;
+    margin: 0.3cm 0;
+    line-height: 1.4;
+    overflow: hidden;
+    white-space: pre;
+  }
+
+  .columns {
+    display: flex;
+    gap: 1cm;
+    flex: 1;
+  }
+  .col { flex: 1; }
+
+  .footer {
+    position: absolute;
+    bottom: 0.6cm;
+    left: 2.2cm;
+    right: 2.2cm;
+    font-size: 9pt;
+    color: #888;
+    display: flex;
+    justify-content: space-between;
+    border-top: 1px solid #ddd;
+    padding-top: 0.2cm;
+  }
+
+  .title-slide {
+    justify-content: center;
+    align-items: flex-start;
+  }
+  .title-slide h1 {
+    font-size: 40pt;
+    margin-bottom: 0.3cm;
+  }
+  .title-slide .subtitle {
+    font-size: 18pt;
+    color: #555;
+    margin-bottom: 1cm;
+  }
+  .title-slide .meta {
+    font-size: 13pt;
+    color: #666;
+    line-height: 1.8;
+  }
+
+  .label {
+    display: inline-block;
+    font-size: 9pt;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #555;
+    border: 1px solid #999;
+    padding: 0.05cm 0.2cm;
+    margin-right: 0.2cm;
+    border-radius: 2px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.3cm 0;
+    font-size: 12pt;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.15cm 0.3cm;
+    border-bottom: 1px solid #ddd;
+    vertical-align: top;
+  }
+  th {
+    font-weight: 600;
+    background: #f5f5f5;
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8cm;
+    flex: 1;
+  }
+  .grid-2 .cell h3 { margin-top: 0; }
+
+  .key {
+    font-family: "Menlo", "Courier New", monospace;
+    font-size: 11pt;
+    color: #333;
+  }
+</style>
+</head>
+<body>
+
+<!-- ================== SLIDE 1: TITLE ================== -->
+<section class="slide title-slide">
+  <h1>Information System of<br>Research-Oriented University</h1>
+  <div class="subtitle">OOP Final Project · Java console application</div>
+  <div class="meta">
+    Submitted as the final deliverable of the Object-Oriented Programming course.<br>
+    Built around the team's technical specification: 12 mandatory classes,<br>
+    four user-facing flows, serialization, and four design patterns.
+  </div>
+  <div class="footer"><span>OOP Final · 2026</span><span>1 / 10</span></div>
+</section>
+
+<!-- ================== SLIDE 2: PROJECT AT A GLANCE ================== -->
+<section class="slide">
+  <h2>Project at a Glance</h2>
+  <div class="grid-2">
+    <div class="cell">
+      <h3>Scope</h3>
+      <ul>
+        <li>30 source files in 7 packages under <code>com.uni</code></li>
+        <li>Five user roles: Admin, Manager, Teacher, Student, ResearcherEmployee</li>
+        <li>Two entry points:
+          <ul>
+            <li><code>UniversityDemo</code> — scripted, 11 sections</li>
+            <li><code>UniversityCLI</code> — interactive console UI</li>
+          </ul>
+        </li>
+      </ul>
+      <h3>Tools</h3>
+      <ul>
+        <li>Java (OpenJDK), no external libraries</li>
+        <li>StarUML — class &amp; use-case diagrams</li>
+        <li>Javadoc — HTML documentation (112 files)</li>
+      </ul>
+    </div>
+    <div class="cell">
+      <h3>Spec Compliance</h3>
+      <ul>
+        <li>All 12 mandatory classes present</li>
+        <li>Four design patterns (spec requires &ge; 4)</li>
+        <li>Four custom checked exceptions</li>
+        <li>Authentication for all users</li>
+        <li>Java object serialization with save / load</li>
+        <li>Mark = 1st + 2nd attestation + final exam</li>
+        <li>Credit limit (21), fail limit (3)</li>
+        <li>News management, employee requests</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer"><span>OOP Final · 2026</span><span>2 / 10</span></div>
+</section>
+
+<!-- ================== SLIDE 3: ARCHITECTURE ================== -->
+<section class="slide">
+  <h2>Architecture</h2>
+  <div class="columns">
+    <div class="col">
+      <h3>Package layout (layered, acyclic)</h3>
+<pre>src/com/uni/
+├── enums/        9 enums
+├── exceptions/   4 custom exceptions
+├── models/       17 classes
+├── comparators/  3 Strategy implementations
+├── factory/      UserFactory
+├── storage/      DataStore  (Singleton)
+└── UniversityDemo.java
+    UniversityCLI.java</pre>
+      <h3>Dependencies</h3>
+      <p style="font-size: 12pt;">
+        <code>enums</code>, <code>exceptions</code> &rarr;
+        <code>models</code> &rarr;
+        <code>comparators</code>, <code>factory</code>, <code>storage</code>
+      </p>
+    </div>
+    <div class="col">
+      <h3>Class hierarchy</h3>
+<pre>User (abstract, Serializable)
+├── Employee (abstract)
+│   ├── Teacher              implements Researcher
+│   ├── Manager
+│   ├── Admin
+│   └── ResearcherEmployee   implements Researcher
+└── Student                  implements Researcher
+
+Researcher (interface)
+└── ResearcherDecorator      (wraps any User)</pre>
+    </div>
+  </div>
+  <div class="footer"><span>OOP Final · 2026</span><span>3 / 10</span></div>
+</section>
+
+<!-- ================== SLIDE 4: DESIGN PATTERNS ================== -->
+<section class="slide">
+  <h2>Four Design Patterns</h2>
+  <table>
+    <tr>
+      <th style="width: 18%;">Pattern</th>
+      <th style="width: 22%;">Class / Files</th>
+      <th>Role in the system</th>
+    </tr>
+    <tr>
+      <td><strong>Singleton</strong></td>
+      <td><code>storage/DataStore.java</code></td>
+      <td>Single global state holder. Thread-safe <code>getInstance()</code>.
+          Serializes the entire object graph to <code>data.ser</code>.</td>
+    </tr>
+    <tr>
+      <td><strong>Factory</strong></td>
+      <td><code>factory/UserFactory.java</code></td>
+      <td><code>createUser(UserType, ...)</code> dispatches by enum to the
+          correct <code>User</code> subclass. Hides constructor variance.</td>
+    </tr>
+    <tr>
+      <td><strong>Decorator</strong></td>
+      <td><code>models/ResearcherDecorator.java</code></td>
+      <td>Wraps any <code>User</code> to grant the <code>Researcher</code> role at runtime
+          without modifying the wrapped class. Used by <code>Manager.makeResearcher</code>.</td>
+    </tr>
+    <tr>
+      <td><strong>Strategy</strong></td>
+      <td><code>comparators/*.java</code> (3)</td>
+      <td><code>DateComparator</code>, <code>CitationsComparator</code>,
+          <code>PaperLengthComparator</code> — interchangeable algorithms passed to
+          <code>printPapers(Comparator)</code>.</td>
+    </tr>
+  </table>
+  <h3>Each pattern closes a specific spec line</h3>
+  <ul>
+    <li>Singleton &rarr; <em>"properly working serialization (think about Data Storage and some pattern)"</em></li>
+    <li>Decorator &rarr; <em>"Researcher created using Decorator pattern? Figure it out"</em></li>
+    <li>Strategy &rarr; <em>"PrintPapers(Comparator c) ... by date, citations, or length"</em></li>
+  </ul>
+  <div class="footer"><span>OOP Final · 2026</span><span>4 / 10</span></div>
+</section>
+
+<!-- ================== SLIDE 5: CUSTOM EXCEPTIONS ================== -->
+<section class="slide">
+  <h2>Custom Exceptions</h2>
+  <p>All four are <strong>checked</strong> (<code>extends Exception</code>) and model
+     business-rule violations the caller must handle.</p>
+  <table>
+    <tr>
+      <th style="width: 30%;">Exception</th>
+      <th style="width: 35%;">Thrown when</th>
+      <th>Spec citation</th>
+    </tr>
+    <tr>
+      <td><code>CreditLimitException</code></td>
+      <td>Student registers for a course that would exceed 21 total credits</td>
+      <td>"Students can't have more than 21 credits"</td>
+    </tr>
+    <tr>
+      <td><code>MaxFailedReachedException</code></td>
+      <td>Student has accumulated 3 failed courses; cannot register or fail more</td>
+      <td>"Students can't fail more than 3 times"</td>
+    </tr>
+    <tr>
+      <td><code>LowHIndexException</code></td>
+      <td>Supervisor candidate has <code>h-index &lt; 3</code></td>
+      <td>"If a person whose h-index &lt; 3 is assigned as a supervisor, a custom exception must be thrown"</td>
+    </tr>
+    <tr>
+      <td><code>NotAResearcherException</code></td>
+      <td>Non-researcher tries to join a <code>ResearchProject</code></td>
+      <td>"If someone who is not a Researcher tries to join the ResearchProject, custom Exception must be thrown"</td>
+    </tr>
+  </table>
+  <p style="margin-top: 0.5cm;">
+    All four are demonstrated in <code>UniversityDemo</code> and reachable from the CLI flows.
+  </p>
+  <div class="footer"><span>OOP Final · 2026</span><span>5 / 10</span></div>
+</section>
+
+<!-- ================== SLIDE 6: CLI — ADMIN & MANAGER ================== -->
+<section class="slide">
+  <h2>CLI Walkthrough · Admin &amp; Manager</h2>
+  <div class="grid-2">
+    <div class="cell">
+      <h3><span class="label">Admin</span> <code>admin / admin</code></h3>
+      <ul>
+        <li><strong>1)</strong> List users — read from DataStore</li>
+        <li><strong>2)</strong> Add student — uses UserFactory</li>
+        <li><strong>3)</strong> Remove user</li>
+        <li><strong>4)</strong> View logs — audit trail of UserActions</li>
+      </ul>
+      <p>Closes: <em>"Manage Users (add, remove, update)"</em>,
+                  <em>"See log files about user actions"</em></p>
+    </div>
+    <div class="cell">
+      <h3><span class="label">Manager</span> <code>manager / m1</code></h3>
+      <ul>
+        <li><strong>1)</strong> Assign course to teacher</li>
+        <li><strong>2)</strong> Approve student registration</li>
+        <li><strong>3)</strong> Statistical report (graded / passed / failed / pending)</li>
+        <li><strong>4)</strong> View students</li>
+        <li><strong>5)</strong> Manage news (publish / list / pin)</li>
+        <li><strong>6)</strong> Requests (PENDING &rarr; SIGNED &rarr; APPROVED/REJECTED)</li>
+        <li><strong>7)</strong> Make researcher (Decorator)</li>
+        <li><strong>8)</strong> Enable research role (flag on Student/Teacher)</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer"><span>OOP Final · 2026</span><span>6 / 10</span></div>
+</section>
+
+<!-- ================== SLIDE 7: CLI — TEACHER & STUDENT ================== -->
+<section class="slide">
+  <h2>CLI Walkthrough · Teacher &amp; Student</h2>
+  <div class="grid-2">
+    <div class="cell">
+      <h3><span class="label">Teacher</span> <code>prof.smith / p1</code></h3>
+      <ul>
+        <li><strong>1)</strong> View my courses</li>
+        <li><strong>2)</strong> Put mark (attempt 1 / 2 / final)</li>
+        <li><strong>3)</strong> Send complaint (UrgencyLevel)</li>
+        <li><strong>4)</strong> Send message</li>
+        <li><strong>5)</strong> View inbox</li>
+        <li><strong>6)</strong> Submit request to dean</li>
+        <li><strong>7)</strong> Research submenu</li>
+      </ul>
+      <p>Professor =&gt; <strong>automatically</strong> a Researcher.<br>
+         Other titles opt in via the flag.</p>
+    </div>
+    <div class="cell">
+      <h3><span class="label">Student</span> <code>alibek / s1</code> · year 4</h3>
+      <ul>
+        <li><strong>1)</strong> View courses</li>
+        <li><strong>2)</strong> Register for a course
+            <span class="key">CreditLimitException, MaxFailedReachedException</span></li>
+        <li><strong>3)</strong> View marks</li>
+        <li><strong>4)</strong> Full transcript</li>
+        <li><strong>5)</strong> Rate teacher</li>
+        <li><strong>6)</strong> Set supervisor
+            <span class="key">LowHIndexException</span></li>
+        <li><strong>7)</strong> Research submenu (if opted in)</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer"><span>OOP Final · 2026</span><span>7 / 10</span></div>
+</section>
+
+<!-- ================== SLIDE 8: RESEARCH SUBMENU ================== -->
+<section class="slide">
+  <h2>Research Submenu (Strategy pattern in action)</h2>
+  <div class="grid-2">
+    <div class="cell">
+      <h3>Five operations</h3>
+      <ul>
+        <li><strong>1)</strong> Publish paper</li>
+        <li><strong>2)</strong> Print my papers (sortable)</li>
+        <li><strong>3)</strong> Show h-index</li>
+        <li><strong>4)</strong> All university papers (sortable)</li>
+        <li><strong>5)</strong> Top cited researcher</li>
+      </ul>
+      <h3>Available to four classes</h3>
+      <ul>
+        <li><code>Teacher</code> (Professor or opted in)</li>
+        <li><code>Student</code> (opted in)</li>
+        <li><code>ResearcherEmployee</code> (always)</li>
+        <li><code>ResearcherDecorator</code> (Manager-created)</li>
+      </ul>
+    </div>
+    <div class="cell">
+      <h3>H-index calculation</h3>
+      <p style="font-size: 12pt;">Largest <em>h</em> such that <em>h</em> papers each have
+                  &ge; <em>h</em> citations. Implementation in <code>ResearcherSupport</code>.</p>
+<pre>static double hIndex(List&lt;ResearchPaper&gt; p) {
+    List&lt;ResearchPaper&gt; s = new ArrayList&lt;&gt;(p);
+    s.sort((a, b) -&gt; Integer.compare(
+                       b.getCitations(),
+                       a.getCitations()));
+    int h = 0;
+    for (int i = 0; i &lt; s.size(); i++) {
+        if (s.get(i).getCitations() &gt;= i + 1)
+            h = i + 1;
+        else break;
+    }
+    return h;
+}</pre>
+    </div>
+  </div>
+  <div class="footer"><span>OOP Final · 2026</span><span>8 / 10</span></div>
+</section>
+
+<!-- ================== SLIDE 9: PERSISTENCE & DEMO DATA ================== -->
+<section class="slide">
+  <h2>Persistence &amp; Demo Data</h2>
+  <div class="grid-2">
+    <div class="cell">
+      <h3>Persistence</h3>
+      <ul>
+        <li>Java object serialization (<code>ObjectOutputStream</code>)</li>
+        <li>Whole <code>DataStore</code> graph &rarr; <code>data.ser</code></li>
+        <li>All models implement <code>Serializable</code></li>
+        <li>Triggered by:
+          <ul>
+            <li>JVM shutdown hook (covers Ctrl-C, terminal close)</li>
+            <li>End of every user session (logout)</li>
+          </ul>
+        </li>
+        <li>Load on startup restores the entire object graph
+            with all back-references intact</li>
+      </ul>
+    </div>
+    <div class="cell">
+      <h3>Seed dataset (out of the box)</h3>
+      <ul>
+        <li><strong>11 users</strong> — admin, manager, 4 teachers,
+            1 ResearcherEmployee, 4 students (years 1–4)</li>
+        <li><strong>4 courses</strong> fully staffed (CS201, MA101, HUM110, AI400)</li>
+        <li><strong>9 papers</strong> across 3 researchers
+            (rex tops at 190 citations, prof.smith h-index = 3)</li>
+        <li><strong>Marks</strong> for two students; one fully graded,
+            one with a pending final</li>
+        <li><strong>3 news</strong> (2 pinned, 1 with comments)</li>
+        <li><strong>3 requests</strong> across PENDING / SIGNED / APPROVED</li>
+        <li><strong>1 ResearchProject</strong> with two participants</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer"><span>OOP Final · 2026</span><span>9 / 10</span></div>
+</section>
+
+<!-- ================== SLIDE 10: HOW TO RUN ================== -->
+<section class="slide">
+  <h2>How to Run · Deliverables</h2>
+  <div class="grid-2">
+    <div class="cell">
+      <h3>Build &amp; run</h3>
+<pre>mkdir -p out
+javac -d out -sourcepath src \
+      $(find src -name "*.java")
+
+# scripted demo — all 11 sections
+java -cp out com.uni.UniversityDemo
+
+# interactive CLI
+java -cp out com.uni.UniversityCLI</pre>
+      <h3>CLI controls</h3>
+      <ul>
+        <li><strong>&uarr; &darr;</strong> navigate</li>
+        <li><strong>Enter</strong> select</li>
+        <li><strong>0–9</strong> digit shortcut</li>
+        <li><strong>q</strong> quit (saves state)</li>
+      </ul>
+    </div>
+    <div class="cell">
+      <h3>Deliverables in the submitted ZIP</h3>
+      <ul>
+        <li><code>src/</code> — Java sources (30 files)</li>
+        <li><code>docs/</code> — Javadoc HTML (112 files)</li>
+        <li><code>report/report.pdf</code> — 10-section report</li>
+        <li><code>report/presentation.pdf</code> — these slides</li>
+        <li>StarUML <code>.mdj</code> — class &amp; use-case diagrams</li>
+      </ul>
+      <h3>Spec checklist closed</h3>
+      <ul>
+        <li>12 mandatory classes &middot; 4 patterns &middot; 4 exceptions</li>
+        <li>Serialization &middot; Authentication &middot; Marks/registration</li>
+        <li>Research workflow &middot; Supervisor with h-index check</li>
+        <li>News &middot; Employee requests &middot; Manager-side reports</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer"><span>OOP Final · 2026</span><span>10 / 10</span></div>
+</section>
+
+</body>
+</html>
