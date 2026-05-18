@@ -29,6 +29,7 @@ import com.uni.models.User;
 import com.uni.storage.DataStore;
 
 import java.io.Console;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Date;
@@ -46,6 +47,15 @@ import java.util.Scanner;
 public class UniversityCLI {
 
     private static final Scanner IN = new Scanner(System.in);
+
+    /** True if we have a real interactive terminal and arrow-key mode is usable. */
+    private static final boolean ARROWS = (System.console() != null);
+
+    static {
+        if (ARROWS) {
+            Runtime.getRuntime().addShutdownHook(new Thread(UniversityCLI::sttyRestore));
+        }
+    }
 
     /* ANSI colour codes — gracefully degrade on terminals that ignore them. */
     private static final String RESET   = "[0m";
@@ -132,14 +142,14 @@ public class UniversityCLI {
 
     private static void adminMenu(DataStore ds, Admin admin) {
         while (true) {
-            screen(admin, new String[] {
+            String choice = menuChoice(admin, new String[] {
                     "1  List users",
                     "2  Add student",
                     "3  Remove user",
                     "4  View logs",
                     "0  Logout",
             });
-            switch (prompt("  > ")) {
+            switch (choice) {
                 case "1": showUsers(ds);                          pause(); break;
                 case "2": addStudentFlow(ds, admin);              pause(); break;
                 case "3": removeUserFlow(ds, admin);              pause(); break;
@@ -196,7 +206,7 @@ public class UniversityCLI {
 
     private static void managerMenu(DataStore ds, Manager manager) {
         while (true) {
-            screen(manager, new String[] {
+            String choice = menuChoice(manager, new String[] {
                     "1  Assign course to teacher",
                     "2  Approve student registration",
                     "3  Statistical report",
@@ -207,7 +217,7 @@ public class UniversityCLI {
                     "8  Enable research role on student/teacher",
                     "0  Logout",
             });
-            switch (prompt("  > ")) {
+            switch (choice) {
                 case "1": assignCourseFlow(ds, manager);          pause(); break;
                 case "2": approveRegFlow(ds, manager);            pause(); break;
                 case "3": statReportFlow(ds, manager);            pause(); break;
@@ -355,7 +365,7 @@ public class UniversityCLI {
 
     private static void teacherMenu(DataStore ds, Teacher teacher) {
         while (true) {
-            screen(teacher, new String[] {
+            String choice = menuChoice(teacher, new String[] {
                     "1  View my courses",
                     "2  Put mark",
                     "3  Send complaint",
@@ -365,7 +375,7 @@ public class UniversityCLI {
                     "7  Research",
                     "0  Logout",
             });
-            switch (prompt("  > ")) {
+            switch (choice) {
                 case "1": viewMyCourses(teacher);                 pause(); break;
                 case "2": putMarkFlow(ds, teacher);               pause(); break;
                 case "3": complaintFlow(ds, teacher);             pause(); break;
@@ -442,7 +452,7 @@ public class UniversityCLI {
 
     private static void studentMenu(DataStore ds, Student student) {
         while (true) {
-            screen(student, new String[] {
+            String choice = menuChoice(student, new String[] {
                     "1  View courses",
                     "2  Register for a course",
                     "3  View marks",
@@ -452,7 +462,7 @@ public class UniversityCLI {
                     "7  Research",
                     "0  Logout",
             });
-            switch (prompt("  > ")) {
+            switch (choice) {
                 case "1": viewCourses(ds);                        pause(); break;
                 case "2": registerFlow(ds, student);              pause(); break;
                 case "3": viewMarks(student);                     pause(); break;
@@ -541,7 +551,7 @@ public class UniversityCLI {
 
     private static void researcherSubMenu(DataStore ds, Researcher r) {
         while (true) {
-            screen("Research · " + r.getResearcherName(), new String[] {
+            String choice = menuChoice("Research · " + r.getResearcherName(), new String[] {
                     "1  Publish paper",
                     "2  Print my papers (sortable)",
                     "3  Show my h-index",
@@ -549,7 +559,7 @@ public class UniversityCLI {
                     "5  Top cited researcher (university-wide)",
                     "0  Back",
             });
-            switch (prompt("  > ")) {
+            switch (choice) {
                 case "1": publishPaperFlow(r);                    pause(); break;
                 case "2":
                     section("My papers");
@@ -663,6 +673,118 @@ public class UniversityCLI {
             int i = Integer.parseInt(s.trim()) - 1;
             return (i >= 0 && i < size) ? i : -1;
         } catch (Exception e) { return -1; }
+    }
+
+    /* ===================== Arrow-key menu ===================== */
+
+    /**
+     * Renders a menu and lets the user pick an option with ↑/↓/Enter
+     * (or by pressing the leading digit). Falls back to typing the
+     * digit if the terminal is not a TTY. Returns the leading char
+     * of the chosen option, so existing switch statements stay valid.
+     */
+    private static String menuChoice(String title, String[] options) {
+        if (!ARROWS) {
+            screen(title, options);
+            return prompt("  > ");
+        }
+        int cursor = 0;
+        sttyRaw();
+        try {
+            while (true) {
+                renderMenu(title, options, cursor);
+                int key = readKey();
+                if (key == KEY_UP) {
+                    cursor = (cursor - 1 + options.length) % options.length;
+                } else if (key == KEY_DOWN) {
+                    cursor = (cursor + 1) % options.length;
+                } else if (key == 10 || key == 13) {
+                    return leadingDigit(options[cursor]);
+                } else if (key >= '0' && key <= '9') {
+                    for (int i = 0; i < options.length; i++) {
+                        if (!options[i].isEmpty() && options[i].charAt(0) == (char) key) {
+                            return leadingDigit(options[i]);
+                        }
+                    }
+                } else if (key == 'q' || key == 'Q' || key == 3 /* Ctrl-C */) {
+                    return "0";
+                }
+            }
+        } finally {
+            sttyRestore();
+            System.out.println();
+        }
+    }
+
+    private static String menuChoice(User user, String[] options) {
+        return menuChoice(user.getClass().getSimpleName() + " · " + user.getFullName(), options);
+    }
+
+    private static String leadingDigit(String option) {
+        return option.isEmpty() ? "" : String.valueOf(option.charAt(0));
+    }
+
+    private static void renderMenu(String title, String[] options, int cursor) {
+        clear();
+        System.out.println();
+        System.out.println(CYAN + "  ──────────────────────────────────────────────────────" + RESET);
+        System.out.println("  " + BOLD + title + RESET);
+        System.out.println(CYAN + "  ──────────────────────────────────────────────────────" + RESET);
+        System.out.println();
+        for (int i = 0; i < options.length; i++) {
+            if (i == cursor) {
+                System.out.println("  " + GREEN + "▸ " + BOLD + options[i] + RESET);
+            } else {
+                System.out.println("    " + DIM + options[i] + RESET);
+            }
+        }
+        System.out.println();
+        System.out.println(DIM + "  ↑/↓ navigate · Enter select · digit shortcut" + RESET);
+    }
+
+    private static final int KEY_UP   = 1001;
+    private static final int KEY_DOWN = 1002;
+
+    private static int readKey() {
+        try {
+            int b = System.in.read();
+            if (b == 27) {                       // ESC: maybe an arrow
+                int b2 = System.in.read();
+                if (b2 == '[') {
+                    int b3 = System.in.read();
+                    if (b3 == 'A') return KEY_UP;
+                    if (b3 == 'B') return KEY_DOWN;
+                    return -1;                   // some other CSI we don't care about
+                }
+                return 27;
+            }
+            return b;
+        } catch (IOException e) {
+            return -1;
+        }
+    }
+
+    private static void sttyRaw() {
+        runStty("-icanon", "-echo", "min", "1");
+    }
+
+    private static void sttyRestore() {
+        runStty("sane");
+    }
+
+    private static void runStty(String... args) {
+        try {
+            String[] cmd = new String[args.length + 1];
+            cmd[0] = "stty";
+            System.arraycopy(args, 0, cmd, 1, args.length);
+            ProcessBuilder pb = new ProcessBuilder(cmd);
+            pb.redirectInput(ProcessBuilder.Redirect.INHERIT);
+            pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+            pb.redirectError(ProcessBuilder.Redirect.INHERIT);
+            pb.start().waitFor();
+        } catch (Exception ignored) {
+            // not a real TTY or stty unavailable — silent fallback
+        }
     }
 
     /* ===================== UI helpers ===================== */
