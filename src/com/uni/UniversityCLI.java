@@ -15,17 +15,21 @@ import com.uni.exceptions.LowHIndexException;
 import com.uni.exceptions.MaxFailedReachedException;
 import com.uni.factory.UserFactory;
 import com.uni.models.Admin;
+import com.uni.models.Comment;
 import com.uni.models.Course;
+import com.uni.models.Lesson;
 import com.uni.models.Manager;
 import com.uni.models.Message;
 import com.uni.models.News;
 import com.uni.models.Request;
 import com.uni.models.ResearchPaper;
+import com.uni.models.ResearchProject;
 import com.uni.models.Researcher;
 import com.uni.models.ResearcherEmployee;
 import com.uni.models.Student;
 import com.uni.models.Teacher;
 import com.uni.models.User;
+import com.uni.enums.LessonType;
 import com.uni.storage.DataStore;
 
 import java.io.Console;
@@ -809,12 +813,17 @@ public class UniversityCLI {
         System.out.println(CYAN + "  ╚══════════════════════════════════════════════════════╝" + RESET);
         System.out.println();
         System.out.println(DIM + "  Demo credentials (login / password):" + RESET);
-        System.out.println(DIM + "    admin       / admin   (Admin)" + RESET);
-        System.out.println(DIM + "    manager     / m1      (Manager)" + RESET);
-        System.out.println(DIM + "    prof.smith  / p1      (Teacher, professor)" + RESET);
-        System.out.println(DIM + "    tutor.kim   / t1      (Teacher)" + RESET);
-        System.out.println(DIM + "    rex         / r1      (Researcher employee)" + RESET);
-        System.out.println(DIM + "    alibek      / s1      (Student, year 4)" + RESET);
+        System.out.println(DIM + "    admin       / admin    (Admin)" + RESET);
+        System.out.println(DIM + "    manager     / m1       (Manager)" + RESET);
+        System.out.println(DIM + "    prof.smith  / p1       (Teacher · Professor · researcher)" + RESET);
+        System.out.println(DIM + "    prof.lee    / p2       (Teacher · Professor · researcher)" + RESET);
+        System.out.println(DIM + "    tutor.kim   / t1       (Teacher · Tutor)" + RESET);
+        System.out.println(DIM + "    slec.park   / sl1      (Teacher · Senior Lecturer · researcher)" + RESET);
+        System.out.println(DIM + "    rex         / r1       (Researcher Employee)" + RESET);
+        System.out.println(DIM + "    alibek      / s1       (Student · year 4 · researcher)" + RESET);
+        System.out.println(DIM + "    bota        / s2       (Student · year 2)" + RESET);
+        System.out.println(DIM + "    doni        / s3       (Student · year 1)" + RESET);
+        System.out.println(DIM + "    aida        / s4       (Student · year 3)" + RESET);
         System.out.println();
     }
 
@@ -873,36 +882,181 @@ public class UniversityCLI {
 
     /* ===================== Seed ===================== */
 
+    /**
+     * Rich seed: 11 users (admin + manager + 4 teachers + 1 researcher
+     * + 4 students), 4 courses fully staffed, 9 papers across 3
+     * researchers (so h-index is meaningful), 3 news with comments,
+     * 3 requests in different states, marks for two students, and
+     * one ResearchProject with participants.
+     */
     private static void seed(DataStore ds) {
         long uid = 1;
         Date hire = new Date();
+
+        /* ---------- users ---------- */
         Admin admin = (Admin) UserFactory.createUser(UserType.ADMIN, uid++,
                 "admin", "admin", "Aibar", "Sysadmin", "admin@uni.kz",
                 Language.EN, 5000.0, hire);
         Manager manager = (Manager) UserFactory.createUser(UserType.MANAGER, uid++,
                 "manager", "m1", "Mira", "Boss", "mira@uni.kz", Language.EN,
                 ManagerType.DEPARTMENT, 4000.0, hire);
+
         Teacher prof = (Teacher) UserFactory.createUser(UserType.TEACHER, uid++,
                 "prof.smith", "p1", "Sam", "Smith", "sam@uni.kz", Language.EN,
                 TeacherTitle.PROFESSOR, 6000.0, hire);
+        Teacher lee = (Teacher) UserFactory.createUser(UserType.TEACHER, uid++,
+                "prof.lee", "p2", "Lily", "Lee", "lily@uni.kz", Language.EN,
+                TeacherTitle.PROFESSOR, 6200.0, hire);
         Teacher tutor = (Teacher) UserFactory.createUser(UserType.TEACHER, uid++,
                 "tutor.kim", "t1", "Karina", "Kim", "karina@uni.kz", Language.EN,
                 TeacherTitle.TUTOR, 2500.0, hire);
-        ResearcherEmployee re = (ResearcherEmployee) UserFactory.createUser(
+        Teacher slec = (Teacher) UserFactory.createUser(UserType.TEACHER, uid++,
+                "slec.park", "sl1", "Ji-Hoon", "Park", "ji@uni.kz", Language.EN,
+                TeacherTitle.SENIOR_LECTURER, 3500.0, hire);
+        slec.setResearcher(true);                                  // opted in
+
+        ResearcherEmployee rex = (ResearcherEmployee) UserFactory.createUser(
                 UserType.RESEARCHER_EMPLOYEE, uid++, "rex", "r1", "Renee", "Xu",
                 "renee@uni.kz", Language.EN, 4500.0, hire);
-        Student s1 = (Student) UserFactory.createUser(UserType.STUDENT, uid++,
+
+        Student alibek = (Student) UserFactory.createUser(UserType.STUDENT, uid++,
                 "alibek", "s1", "Alibek", "Andanuarbek", "alibek@uni.kz",
                 Language.EN, 4, "Computer Science");
-        for (User u : Arrays.asList(admin, manager, prof, tutor, re, s1)) ds.addUser(u);
+        Student bota = (Student) UserFactory.createUser(UserType.STUDENT, uid++,
+                "bota", "s2", "Bota", "Sat", "bota@uni.kz",
+                Language.EN, 2, "Math");
+        Student doni = (Student) UserFactory.createUser(UserType.STUDENT, uid++,
+                "doni", "s3", "Daniyal", "Kozhakhmet", "doni@uni.kz",
+                Language.EN, 1, "Computer Science");
+        Student aida = (Student) UserFactory.createUser(UserType.STUDENT, uid++,
+                "aida", "s4", "Aida", "Nurzhan", "aida@uni.kz",
+                Language.EN, 3, "Physics");
+        alibek.setResearcher(true);                                // opted in
 
-        ds.addCourse(new Course(1, "CS201", "Object-Oriented Programming",
-                6, CourseType.MAJOR, 4));
-        ds.addCourse(new Course(2, "MA101", "Calculus II",
-                4, CourseType.MAJOR, 2));
-        ds.addCourse(new Course(3, "HUM110", "Philosophy of Science",
-                3, CourseType.FREE_ELECTIVE, 4));
-        ds.addCourse(new Course(4, "AI400", "Advanced AI",
-                18, CourseType.MAJOR, 4));
+        for (User u : Arrays.asList(admin, manager, prof, lee, tutor, slec,
+                rex, alibek, bota, doni, aida)) ds.addUser(u);
+
+        /* ---------- courses + instructors + lessons ---------- */
+        Course cs201 = new Course(1, "CS201", "Object-Oriented Programming",
+                6, CourseType.MAJOR, 4);
+        Course ma101 = new Course(2, "MA101", "Calculus II",
+                4, CourseType.MAJOR, 2);
+        Course hum110 = new Course(3, "HUM110", "Philosophy of Science",
+                3, CourseType.FREE_ELECTIVE, 4);
+        Course ai400 = new Course(4, "AI400", "Advanced AI",
+                18, CourseType.MAJOR, 4);
+        for (Course c : Arrays.asList(cs201, ma101, hum110, ai400)) ds.addCourse(c);
+
+        manager.assignCourse(cs201, prof);
+        manager.assignPracticeCourse(cs201, tutor);
+        manager.assignCourse(ma101, tutor);
+        manager.assignCourse(hum110, slec);
+        manager.assignCourse(ai400, lee);
+
+        cs201.addLesson(new Lesson(LessonType.LECTURE,  "A101", new Date(), cs201));
+        cs201.addLesson(new Lesson(LessonType.PRACTICE, "B202", new Date(), cs201));
+        ma101.addLesson(new Lesson(LessonType.LECTURE,  "A205", new Date(), ma101));
+
+        /* ---------- registrations + approvals + marks ---------- */
+        registerAndApprove(manager, alibek, cs201);
+        registerAndApprove(manager, alibek, ma101);
+        registerAndApprove(manager, bota,   ma101);
+        registerAndApprove(manager, aida,   hum110);
+
+        try {
+            prof.putMark(alibek, cs201, 1, 27);
+            prof.putMark(alibek, cs201, 2, 28);
+            prof.putMark(alibek, cs201, 3, 35);                    // A
+            tutor.putMark(alibek, ma101, 1, 22);
+            tutor.putMark(alibek, ma101, 2, 23);                   // final pending
+            tutor.putMark(bota, ma101, 1, 18);
+            tutor.putMark(bota, ma101, 2, 20);
+            tutor.putMark(bota, ma101, 3, 30);                     // C
+        } catch (Exception ignored) { }
+
+        /* ---------- research papers ---------- */
+        // prof.smith — h-index 3 (cites 12, 8, 5)
+        publish(prof, "OOP Paradigms",       "ACM TOPLAS", "10.1145/3501", 14, 12, date(2024, 3, 1));
+        publish(prof, "Java Memory Model",   "JACM",       "10.1145/3614", 22,  8, date(2024, 5, 15));
+        publish(prof, "Concurrent GC",       "OOPSLA",     "10.1145/3514", 18,  5, date(2024, 7, 20));
+
+        // rex — h-index 4 (cites 75, 50, 40, 25) — будет top cited
+        publish(rex, "Tiny LLMs",           "ACL",     "10.18653/v1/2024", 10, 75, date(2024, 6, 5));
+        publish(rex, "Edge AI",             "JACM",    "10.1145/3501",     14, 50, date(2024, 1, 10));
+        publish(rex, "Federated Learning",  "NeurIPS", "10.1145/3501",     12, 40, date(2024, 11, 1));
+        publish(rex, "Quantum ML",          "Nature",  "10.1038/s41",       6, 25, date(2024, 8, 30));
+
+        // prof.lee — h-index 2
+        publish(lee, "Compiler Optimisations", "PLDI", "10.1145/3501",  9, 18, date(2024, 4, 12));
+        publish(lee, "Type Inference",         "ICFP", "10.1145/3501", 11,  7, date(2024, 9, 8));
+
+        /* ---------- research project ---------- */
+        ResearchProject project = new ResearchProject("Compilers & Garbage Collection");
+        try {
+            project.addParticipant(prof);
+            project.addParticipant(rex);
+        } catch (Exception ignored) { }
+        ds.addResearchProject(project);
+
+        /* ---------- news + comments ---------- */
+        News n1 = new News(ds.nextNewsId(), "Welcome to spring semester",
+                "Classes start on Feb 1. Final exam schedule is posted on the portal.",
+                manager);
+        n1.setPinned(true);
+        n1.addComment(new Comment(alibek, "Thanks!"));
+        n1.addComment(new Comment(bota,   "Will the exam dates be moved?"));
+        ds.addNews(n1);
+
+        News n2 = new News(ds.nextNewsId(), "Research seminar Friday",
+                "Open AI seminar on Friday at 5pm in Room 405. Prof. Smith presenting.",
+                manager);
+        ds.addNews(n2);
+
+        News n3 = new News(ds.nextNewsId(), "Library hours extended",
+                "Library now open until midnight during exam week.",
+                manager);
+        n3.setPinned(true);
+        ds.addNews(n3);
+
+        /* ---------- employee requests in different states ---------- */
+        Request rq1 = new Request(ds.nextRequestId(), prof,
+                "New projector for room 312",
+                "Projector in 312 is broken — need a replacement before next week.");
+        ds.addRequest(rq1);                                        // PENDING
+
+        Request rq2 = new Request(ds.nextRequestId(), tutor,
+                "Extra office hours space",
+                "Need a small classroom for office hours on Mondays at 4pm.");
+        rq2.sign();
+        rq2.approve("Approved — Room 210 reserved Mondays 4-6pm.");
+        ds.addRequest(rq2);                                        // APPROVED
+
+        Request rq3 = new Request(ds.nextRequestId(), rex,
+                "Cloud compute budget",
+                "Requesting $5000 AWS credits for NeurIPS experiments.");
+        rq3.sign();
+        ds.addRequest(rq3);                                        // SIGNED (waiting decision)
+
+        ds.log(admin, "seeded users, courses, papers, news, requests");
+    }
+
+    private static void registerAndApprove(Manager m, Student s, Course c) {
+        try { s.registerForCourse(c); } catch (Exception ignored) { }
+        m.approveRegistration(s, c);
+    }
+
+    private static void publish(Researcher r, String title, String journal,
+                                String doi, int pages, int citations, Date when) {
+        try {
+            r.publishPaper(new ResearchPaper(title, Arrays.asList(r),
+                    journal, pages, citations, when, doi, ""));
+        } catch (Exception ignored) { }
+    }
+
+    private static Date date(int year, int month1Based, int day) {
+        java.util.Calendar c = java.util.Calendar.getInstance();
+        c.clear();
+        c.set(year, month1Based - 1, day);
+        return c.getTime();
     }
 }
