@@ -894,5 +894,9 @@ public class UniversityCLI {
                 6, CourseType.MAJOR, 4));
         ds.addCourse(new Course(2, "MA101", "Calculus II",
                 4, CourseType.MAJOR, 2));
+        ds.addCourse(new Course(3, "HUM110", "Philosophy of Science",
+                3, CourseType.FREE_ELECTIVE, 4));
+        ds.addCourse(new Course(4, "AI400", "Advanced AI",
+                18, CourseType.MAJOR, 4));
     }
 }
