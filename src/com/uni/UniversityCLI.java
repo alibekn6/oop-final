@@ -236,28 +236,36 @@ public class UniversityCLI {
 
     private static void requestsFlow(DataStore ds, Manager manager) {
         System.out.println("\n  Requests: 1) All  2) Pending  3) Sign  4) Approve  5) Reject  0) Back");
-        switch (prompt("  > ")) {
-            case "1": case "2":
-                RequestStatus filter = prompt("  > ").equals("2") ? RequestStatus.PENDING : null;
-                manager.viewRequests(filter).forEach(r -> System.out.println("  " + r));
+        String op = prompt("  > ");
+        switch (op) {
+            case "1":
+            case "2":
+                RequestStatus filter = op.equals("2") ? RequestStatus.PENDING : null;
+                List<Request> shown = manager.viewRequests(filter);
+                if (shown.isEmpty()) System.out.println("  (no requests)");
+                else shown.forEach(rq -> System.out.println("  " + rq));
                 break;
-            case "3": case "4": case "5":
+            case "3":
+            case "4":
+            case "5":
                 List<Request> all = ds.getRequests();
+                if (all.isEmpty()) { System.out.println("  (no requests)"); return; }
                 for (int i = 0; i < all.size(); i++) {
                     System.out.println("  " + (i + 1) + ") " + all.get(i));
                 }
-                int idx = Integer.parseInt(prompt("Index: ")) - 1;
-                if (idx < 0 || idx >= all.size()) { System.out.println("?"); return; }
+                int idx = parseIdx(prompt("Index: "), all.size());
+                if (idx < 0) { System.out.println("?"); return; }
                 Request r = all.get(idx);
                 try {
-                    String op = prompt("  > ");
-                    if (op.equals("3")) manager.signRequest(r);
+                    if (op.equals("3"))      manager.signRequest(r);
                     else if (op.equals("4")) manager.approveRequest(r, prompt("Note: "));
-                    else manager.rejectRequest(r, prompt("Note: "));
-                    System.out.println(r);
+                    else                     manager.rejectRequest(r, prompt("Note: "));
+                    System.out.println("  " + r);
                 } catch (Exception e) {
                     System.out.println("Error: " + e.getMessage());
                 }
+                break;
+            default:
                 break;
         }
     }
