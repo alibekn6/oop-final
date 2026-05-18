@@ -52,9 +52,14 @@ public class UniversityCLI {
     private static final boolean ARROWS = (System.console() != null);
 
     static {
-        if (ARROWS) {
-            Runtime.getRuntime().addShutdownHook(new Thread(UniversityCLI::sttyRestore));
-        }
+        // Always save state on JVM shutdown — covers Ctrl-C, terminal close,
+        // and any other path that bypasses the normal 'q' quit flow.
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (ARROWS) sttyRestore();
+            try {
+                DataStore.getInstance().save();
+            } catch (Exception ignored) { }
+        }));
     }
 
     /* ANSI colour codes — gracefully degrade on terminals that ignore them. */
@@ -76,6 +81,7 @@ public class UniversityCLI {
             User user = loginScreen(ds);
             if (user == null) break;          // user typed 'q'
             dispatch(ds, user);
+            ds.save();                        // persist after every logout
         }
 
         clear();
