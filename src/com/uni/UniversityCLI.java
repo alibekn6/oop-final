@@ -3,7 +3,6 @@ package com.uni;
 import com.uni.comparators.CitationsComparator;
 import com.uni.comparators.DateComparator;
 import com.uni.comparators.PaperLengthComparator;
-import com.uni.enums.CitationFormat;
 import com.uni.enums.CourseType;
 import com.uni.enums.Language;
 import com.uni.enums.ManagerType;
@@ -14,18 +13,14 @@ import com.uni.enums.UserType;
 import com.uni.exceptions.CreditLimitException;
 import com.uni.exceptions.LowHIndexException;
 import com.uni.exceptions.MaxFailedReachedException;
-import com.uni.exceptions.NotAResearcherException;
 import com.uni.factory.UserFactory;
 import com.uni.models.Admin;
-import com.uni.models.Comment;
 import com.uni.models.Course;
 import com.uni.models.Manager;
-import com.uni.models.Mark;
 import com.uni.models.Message;
 import com.uni.models.News;
 import com.uni.models.Request;
 import com.uni.models.ResearchPaper;
-import com.uni.models.ResearchProject;
 import com.uni.models.Researcher;
 import com.uni.models.ResearcherEmployee;
 import com.uni.models.Student;
@@ -38,7 +33,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Scanner;
 
 /**
@@ -53,216 +47,282 @@ public class UniversityCLI {
 
     private static final Scanner IN = new Scanner(System.in);
 
+    /* ANSI colour codes — gracefully degrade on terminals that ignore them. */
+    private static final String RESET   = "[0m";
+    private static final String BOLD    = "[1m";
+    private static final String DIM     = "[2m";
+    private static final String CYAN    = "[36m";
+    private static final String GREEN   = "[32m";
+    private static final String YELLOW  = "[33m";
+    private static final String RED     = "[31m";
+    private static final String MAGENTA = "[35m";
+
+    /* ===================== Main ===================== */
+
     public static void main(String[] args) {
+        DataStore ds = bootstrap();
+
+        while (true) {
+            User user = loginScreen(ds);
+            if (user == null) break;          // user typed 'q'
+            dispatch(ds, user);
+        }
+
+        clear();
+        info("Saving state to data.ser ...");
+        ds.save();
+        ok("Bye!");
+    }
+
+    private static DataStore bootstrap() {
         DataStore ds;
         try {
             ds = DataStore.load();
             if (ds.getUsers().isEmpty()) {
-                System.out.println("(empty store — seeding demo data)");
                 seed(ds);
-            } else {
-                System.out.println("Loaded " + ds.getUsers().size() + " users from disk.");
+                return ds;
             }
+            return ds;
         } catch (Exception e) {
             DataStore.resetForTesting();
             ds = DataStore.getInstance();
             seed(ds);
-            System.out.println("(no save file — seeded demo data)");
+            return ds;
         }
+    }
 
-        banner();
+    /* ===================== Login Screen ===================== */
+
+    private static User loginScreen(DataStore ds) {
         while (true) {
-            System.out.println();
-            System.out.println("--- Login (type 'q' to quit) ---");
-            String login = prompt("Login: ");
-            if (login.equalsIgnoreCase("q")) break;
-            String pass = readPassword("Password: ");
-            User user = ds.authenticate(login, pass);
-            if (user == null) {
-                System.out.println("Invalid credentials.");
+            clear();
+            banner();
+            line();
+            System.out.println("  " + BOLD + "Sign in" + RESET
+                    + DIM + " (type 'q' to quit)" + RESET);
+            line();
+            String login = prompt("  Login    : ");
+            if (login.equalsIgnoreCase("q")) return null;
+            String pass  = readPassword("  Password : ");
+            User u = ds.authenticate(login, pass);
+            if (u == null) {
+                err("  Invalid credentials.");
+                pause();
                 continue;
             }
-            System.out.println("Welcome, " + user.getFullName() + " (" + user.getClass().getSimpleName() + ")");
-            dispatch(ds, user);
+            return u;
         }
-
-        System.out.println("Saving... bye.");
-        ds.save();
     }
 
     /* ===================== Dispatch ===================== */
 
     private static void dispatch(DataStore ds, User user) {
-        if (user instanceof Admin)              adminMenu(ds, (Admin) user);
-        else if (user instanceof Manager)       managerMenu(ds, (Manager) user);
-        else if (user instanceof Teacher)       teacherMenu(ds, (Teacher) user);
-        else if (user instanceof Student)       studentMenu(ds, (Student) user);
-        else if (user instanceof ResearcherEmployee)
-                                                researcherMenu(ds, (ResearcherEmployee) user);
-        else                                    System.out.println("(no menu for this user type)");
+        if (user instanceof Admin)                          adminMenu(ds, (Admin) user);
+        else if (user instanceof Manager)                   managerMenu(ds, (Manager) user);
+        else if (user instanceof Teacher)                   teacherMenu(ds, (Teacher) user);
+        else if (user instanceof Student)                   studentMenu(ds, (Student) user);
+        else if (user instanceof ResearcherEmployee)        researcherEmployeeMenu(ds, (ResearcherEmployee) user);
+        else {
+            err("No menu available for this user type.");
+            pause();
+        }
     }
 
     /* ===================== Admin ===================== */
 
     private static void adminMenu(DataStore ds, Admin admin) {
         while (true) {
-            System.out.println("\n[Admin] 1) List users  2) Add student  3) Remove user  4) View logs  0) Logout");
-            switch (prompt("> ")) {
-                case "1":
-                    for (User u : ds.getUsers()) {
-                        System.out.println("  " + u.getLogin() + "  "
-                                + u.getFullName() + "  ("
-                                + u.getClass().getSimpleName() + ")");
-                    }
-                    break;
-                case "2":
-                    addStudentFlow(ds, admin);
-                    break;
-                case "3":
-                    String l = prompt("Login to remove: ");
-                    User target = findUser(ds, l);
-                    if (target == null) System.out.println("Not found.");
-                    else { admin.removeUser(target); System.out.println("Removed."); }
-                    break;
-                case "4":
-                    ds.getLogs().forEach(a -> System.out.println("  " + a));
-                    break;
-                case "0":
-                    return;
-                default:
-                    System.out.println("?");
+            screen(admin, new String[] {
+                    "1  List users",
+                    "2  Add student",
+                    "3  Remove user",
+                    "4  View logs",
+                    "0  Logout",
+            });
+            switch (prompt("  > ")) {
+                case "1": showUsers(ds);                          pause(); break;
+                case "2": addStudentFlow(ds, admin);              pause(); break;
+                case "3": removeUserFlow(ds, admin);              pause(); break;
+                case "4": showLogs(ds);                           pause(); break;
+                case "0": return;
+                default : err("Unknown option."); pause();
             }
         }
     }
 
+    private static void showUsers(DataStore ds) {
+        section("Users (" + ds.getUsers().size() + ")");
+        for (User u : ds.getUsers()) {
+            System.out.printf("  %-12s %-25s %s%n",
+                    u.getLogin(), u.getFullName(),
+                    DIM + u.getClass().getSimpleName() + RESET);
+        }
+    }
+
     private static void addStudentFlow(DataStore ds, Admin admin) {
+        section("Add new student");
         try {
             long id = (long) (ds.getUsers().size() + 1);
-            String login = prompt("Login: ");
-            String pass  = prompt("Password: ");
-            String first = prompt("First name: ");
-            String last  = prompt("Last name: ");
-            String email = prompt("Email: ");
-            int year     = Integer.parseInt(prompt("Year of study (1-4): "));
-            String major = prompt("Major: ");
+            String login = prompt("  Login         : ");
+            String pass  = prompt("  Password      : ");
+            String first = prompt("  First name    : ");
+            String last  = prompt("  Last name     : ");
+            String email = prompt("  Email         : ");
+            int year     = Integer.parseInt(prompt("  Year (1-4)    : "));
+            String major = prompt("  Major         : ");
             Student s = (Student) UserFactory.createUser(UserType.STUDENT,
                     id, login, pass, first, last, email, Language.EN, year, major);
             admin.addUser(s);
-            System.out.println("Added: " + s.getFullName());
+            ok("Added: " + s.getFullName());
         } catch (Exception e) {
-            System.out.println("Failed: " + e.getMessage());
+            err("Failed: " + e.getMessage());
         }
+    }
+
+    private static void removeUserFlow(DataStore ds, Admin admin) {
+        section("Remove user");
+        User target = pickUser(ds);
+        if (target == null) { info("Cancelled."); return; }
+        admin.removeUser(target);
+        ok("Removed: " + target.getFullName());
+    }
+
+    private static void showLogs(DataStore ds) {
+        section("Action logs (" + ds.getLogs().size() + ")");
+        ds.getLogs().forEach(a -> System.out.println("  " + a));
     }
 
     /* ===================== Manager ===================== */
 
     private static void managerMenu(DataStore ds, Manager manager) {
         while (true) {
-            System.out.println("\n[Manager] 1) Assign course  2) Approve registration  3) Statistical report"
-                    + "  4) View students  5) Manage news  6) Requests  7) Make researcher  0) Logout");
-            switch (prompt("> ")) {
-                case "1":
-                    Course c1 = pickCourse(ds);
-                    Teacher t1 = pickTeacher(ds);
-                    if (c1 != null && t1 != null) {
-                        manager.assignCourse(c1, t1);
-                        System.out.println("Assigned " + t1.getFullName() + " to " + c1.getCourseCode());
-                    }
-                    break;
-                case "2":
-                    Course c2 = pickCourse(ds);
-                    Student s2 = pickStudent(ds);
-                    if (c2 != null && s2 != null) {
-                        manager.approveRegistration(s2, c2);
-                        System.out.println("Approved.");
-                    }
-                    break;
-                case "3":
-                    Course c3 = pickCourse(ds);
-                    if (c3 != null) System.out.println(manager.createStatisticalReport(c3));
-                    break;
-                case "4":
-                    ds.getStudents().forEach(s -> System.out.println("  " + s.getFullName()
-                            + " (year " + s.getYearOfStudy() + ", " + s.getMajor() + ")"));
-                    break;
-                case "5":
-                    manageNewsFlow(ds, manager);
-                    break;
-                case "6":
-                    requestsFlow(ds, manager);
-                    break;
-                case "7":
-                    User u = pickUser(ds);
-                    if (u != null) {
-                        Researcher r = manager.makeResearcher(u);
-                        System.out.println("Wrapped as researcher: " + r.getResearcherName());
-                    }
-                    break;
-                case "0":
-                    return;
-                default:
-                    System.out.println("?");
+            screen(manager, new String[] {
+                    "1  Assign course to teacher",
+                    "2  Approve student registration",
+                    "3  Statistical report",
+                    "4  View students",
+                    "5  Manage news",
+                    "6  Requests (sign / approve / reject)",
+                    "7  Make researcher (decorator)",
+                    "8  Enable research role on student/teacher",
+                    "0  Logout",
+            });
+            switch (prompt("  > ")) {
+                case "1": assignCourseFlow(ds, manager);          pause(); break;
+                case "2": approveRegFlow(ds, manager);            pause(); break;
+                case "3": statReportFlow(ds, manager);            pause(); break;
+                case "4": viewStudentsFlow(ds);                   pause(); break;
+                case "5": manageNewsFlow(ds, manager);            pause(); break;
+                case "6": requestsFlow(ds, manager);              pause(); break;
+                case "7": makeResearcherFlow(ds, manager);        pause(); break;
+                case "8": enableResearchFlow(ds);                 pause(); break;
+                case "0": return;
+                default : err("Unknown option."); pause();
             }
         }
     }
 
+    private static void assignCourseFlow(DataStore ds, Manager manager) {
+        section("Assign course to teacher");
+        Course c = pickCourse(ds);     if (c == null) { info("Cancelled."); return; }
+        Teacher t = pickTeacher(ds);   if (t == null) { info("Cancelled."); return; }
+        manager.assignCourse(c, t);
+        ok("Assigned " + t.getFullName() + " to " + c.getCourseCode());
+    }
+
+    private static void approveRegFlow(DataStore ds, Manager manager) {
+        section("Approve student registration");
+        Student s = pickStudent(ds);   if (s == null) { info("Cancelled."); return; }
+        Course c = pickCourse(ds);     if (c == null) { info("Cancelled."); return; }
+        manager.approveRegistration(s, c);
+        ok("Approved.");
+    }
+
+    private static void statReportFlow(DataStore ds, Manager manager) {
+        section("Statistical report");
+        Course c = pickCourse(ds); if (c == null) { info("Cancelled."); return; }
+        System.out.println();
+        System.out.println(manager.createStatisticalReport(c));
+    }
+
+    private static void viewStudentsFlow(DataStore ds) {
+        section("Students (" + ds.getStudents().size() + ")");
+        ds.getStudents().forEach(s -> System.out.printf(
+                "  %-25s  year %d  %s%n",
+                s.getFullName(), s.getYearOfStudy(), s.getMajor()));
+    }
+
     private static void manageNewsFlow(DataStore ds, Manager manager) {
-        System.out.println("\n  News: 1) Publish  2) List  3) Pin/unpin  0) Back");
+        section("Manage news");
+        System.out.println("  1  Publish");
+        System.out.println("  2  List all");
+        System.out.println("  3  Toggle pin");
+        System.out.println("  0  Back");
         switch (prompt("  > ")) {
             case "1":
-                String topic = prompt("Topic: ");
-                String body  = prompt("Content: ");
-                boolean pin  = prompt("Pinned? (y/n): ").equalsIgnoreCase("y");
+                String topic = prompt("  Topic     : ");
+                String body  = prompt("  Content   : ");
+                boolean pin  = prompt("  Pinned?(y/n): ").equalsIgnoreCase("y");
                 News n = manager.manageNews(topic, body, pin);
-                System.out.println("Published #" + n.getId());
+                ok("Published #" + n.getId());
                 break;
             case "2":
-                for (News news : ds.getNews()) System.out.println("  " + news);
+                if (ds.getNews().isEmpty()) info("No news yet.");
+                else ds.getNews().forEach(x -> System.out.println("  " + x));
                 break;
             case "3":
                 List<News> all = ds.getNews();
+                if (all.isEmpty()) { info("No news to pin."); break; }
                 for (int i = 0; i < all.size(); i++) {
                     System.out.println("  " + (i + 1) + ") " + all.get(i));
                 }
-                int idx = Integer.parseInt(prompt("Index: ")) - 1;
-                if (idx >= 0 && idx < all.size()) {
-                    News x = all.get(idx);
-                    manager.pinNews(x, !x.isPinned());
-                    System.out.println("Pinned=" + x.isPinned());
-                }
+                int idx = parseIdx(prompt("  Index     : "), all.size());
+                if (idx < 0) { info("Cancelled."); break; }
+                News x = all.get(idx);
+                manager.pinNews(x, !x.isPinned());
+                ok("Pinned = " + x.isPinned());
+                break;
+            default:
                 break;
         }
     }
 
     private static void requestsFlow(DataStore ds, Manager manager) {
-        System.out.println("\n  Requests: 1) All  2) Pending  3) Sign  4) Approve  5) Reject  0) Back");
+        section("Employee requests");
+        System.out.println("  1  Show all");
+        System.out.println("  2  Show pending only");
+        System.out.println("  3  Sign a request");
+        System.out.println("  4  Approve a request");
+        System.out.println("  5  Reject a request");
+        System.out.println("  0  Back");
         String op = prompt("  > ");
         switch (op) {
             case "1":
             case "2":
                 RequestStatus filter = op.equals("2") ? RequestStatus.PENDING : null;
                 List<Request> shown = manager.viewRequests(filter);
-                if (shown.isEmpty()) System.out.println("  (no requests)");
-                else shown.forEach(rq -> System.out.println("  " + rq));
+                System.out.println();
+                if (shown.isEmpty()) info("No requests.");
+                else shown.forEach(r -> System.out.println("  " + r));
                 break;
             case "3":
             case "4":
             case "5":
                 List<Request> all = ds.getRequests();
-                if (all.isEmpty()) { System.out.println("  (no requests)"); return; }
+                if (all.isEmpty()) { info("No requests."); break; }
                 for (int i = 0; i < all.size(); i++) {
                     System.out.println("  " + (i + 1) + ") " + all.get(i));
                 }
-                int idx = parseIdx(prompt("Index: "), all.size());
-                if (idx < 0) { System.out.println("?"); return; }
+                int idx = parseIdx(prompt("  Index     : "), all.size());
+                if (idx < 0) { info("Cancelled."); break; }
                 Request r = all.get(idx);
                 try {
                     if (op.equals("3"))      manager.signRequest(r);
-                    else if (op.equals("4")) manager.approveRequest(r, prompt("Note: "));
-                    else                     manager.rejectRequest(r, prompt("Note: "));
-                    System.out.println("  " + r);
+                    else if (op.equals("4")) manager.approveRequest(r, prompt("  Note      : "));
+                    else                     manager.rejectRequest(r, prompt("  Note      : "));
+                    ok(r.toString());
                 } catch (Exception e) {
-                    System.out.println("Error: " + e.getMessage());
+                    err(e.getMessage());
                 }
                 break;
             default:
@@ -270,185 +330,277 @@ public class UniversityCLI {
         }
     }
 
+    private static void makeResearcherFlow(DataStore ds, Manager manager) {
+        section("Make any user a researcher (Decorator pattern)");
+        User u = pickUser(ds); if (u == null) { info("Cancelled."); return; }
+        Researcher r = manager.makeResearcher(u);
+        ok("Wrapped as researcher: " + r.getResearcherName());
+    }
+
+    private static void enableResearchFlow(DataStore ds) {
+        section("Enable research role on student/teacher");
+        User u = pickUser(ds); if (u == null) { info("Cancelled."); return; }
+        if (u instanceof Student) {
+            ((Student) u).setResearcher(true);
+            ok("Student " + u.getFullName() + " is now a researcher.");
+        } else if (u instanceof Teacher) {
+            ((Teacher) u).setResearcher(true);
+            ok("Teacher " + u.getFullName() + " is now a researcher.");
+        } else {
+            err("Only Student or Teacher can be opted into research via this option.");
+        }
+    }
+
     /* ===================== Teacher ===================== */
 
     private static void teacherMenu(DataStore ds, Teacher teacher) {
         while (true) {
-            System.out.println("\n[Teacher] 1) View courses  2) Put mark  3) Send complaint"
-                    + "  4) Send message  5) Submit request  6) Research  0) Logout");
-            switch (prompt("> ")) {
-                case "1":
-                    teacher.viewMyCourses().forEach(c -> System.out.println("  " + c.getCourseCode()
-                            + "  " + c.getName()));
-                    break;
-                case "2":
-                    putMarkFlow(ds, teacher);
-                    break;
-                case "3":
-                    Student s = pickStudent(ds);
-                    if (s != null) {
-                        UrgencyLevel level = UrgencyLevel.valueOf(prompt("Level (LOW/MEDIUM/HIGH): "));
-                        teacher.setComplaint(s, level, prompt("Reason: "));
-                        System.out.println("Complaint filed.");
-                    }
-                    break;
-                case "4":
-                    User to = pickUser(ds);
-                    if (to != null) {
-                        Message m = new Message(teacher, to, prompt("Text: "));
-                        teacher.sendMessage(to, m);
-                        ds.addMessage(m);
-                        System.out.println("Sent.");
-                    }
-                    break;
-                case "5":
-                    Request rq = teacher.submitRequest(prompt("Subject: "), prompt("Body: "));
-                    System.out.println("Submitted: " + rq);
-                    break;
-                case "6":
-                    researcherSubMenu(ds, teacher);
-                    break;
-                case "0":
-                    return;
-                default:
-                    System.out.println("?");
+            screen(teacher, new String[] {
+                    "1  View my courses",
+                    "2  Put mark",
+                    "3  Send complaint",
+                    "4  Send message",
+                    "5  View inbox",
+                    "6  Submit request to dean",
+                    "7  Research",
+                    "0  Logout",
+            });
+            switch (prompt("  > ")) {
+                case "1": viewMyCourses(teacher);                 pause(); break;
+                case "2": putMarkFlow(ds, teacher);               pause(); break;
+                case "3": complaintFlow(ds, teacher);             pause(); break;
+                case "4": sendMessageFlow(ds, teacher);           pause(); break;
+                case "5": viewInbox(teacher);                     pause(); break;
+                case "6": submitRequestFlow(teacher);             pause(); break;
+                case "7": researcherSubMenu(ds, teacher);         break;
+                case "0": return;
+                default : err("Unknown option."); pause();
             }
         }
     }
 
+    private static void viewMyCourses(Teacher teacher) {
+        section("My courses (" + teacher.viewMyCourses().size() + ")");
+        teacher.viewMyCourses().forEach(c -> System.out.printf("  %-8s  %s%n",
+                c.getCourseCode(), c.getName()));
+    }
+
     private static void putMarkFlow(DataStore ds, Teacher teacher) {
+        section("Put mark");
         try {
-            Student s = pickStudent(ds);
-            if (s == null) return;
-            Course c = pickCourse(ds);
-            if (c == null) return;
-            int att = Integer.parseInt(prompt("Attempt (1/2/3): "));
-            double sc = Double.parseDouble(prompt("Score: "));
+            Student s = pickStudent(ds); if (s == null) { info("Cancelled."); return; }
+            Course c  = pickCourse(ds);  if (c == null) { info("Cancelled."); return; }
+            int att   = Integer.parseInt(prompt("  Attempt (1/2/3) : "));
+            double sc = Double.parseDouble(prompt("  Score           : "));
             teacher.putMark(s, c, att, sc);
-            System.out.println("Recorded.");
+            ok("Recorded.");
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            err(e.getMessage());
         }
+    }
+
+    private static void complaintFlow(DataStore ds, Teacher teacher) {
+        section("Send complaint about student");
+        Student s = pickStudent(ds); if (s == null) { info("Cancelled."); return; }
+        try {
+            UrgencyLevel level = UrgencyLevel.valueOf(
+                    prompt("  Level (LOW/MEDIUM/HIGH) : ").toUpperCase());
+            teacher.setComplaint(s, level, prompt("  Reason : "));
+            ok("Complaint filed.");
+        } catch (Exception e) {
+            err("Invalid level.");
+        }
+    }
+
+    private static void sendMessageFlow(DataStore ds, Teacher teacher) {
+        section("Send message");
+        User to = pickUser(ds); if (to == null) { info("Cancelled."); return; }
+        Message m = new Message(teacher, to, prompt("  Text : "));
+        teacher.sendMessage(to, m);
+        ds.addMessage(m);
+        ok("Sent.");
+    }
+
+    private static void viewInbox(Teacher teacher) {
+        section("Inbox (" + teacher.getMessages().size() + ")");
+        if (teacher.getMessages().isEmpty()) {
+            info("No messages.");
+            return;
+        }
+        teacher.getMessages().forEach(m -> System.out.println("  " + m));
+    }
+
+    private static void submitRequestFlow(Teacher teacher) {
+        section("Submit request to dean / rector");
+        Request rq = teacher.submitRequest(
+                prompt("  Subject : "),
+                prompt("  Body    : "));
+        ok("Submitted: " + rq);
     }
 
     /* ===================== Student ===================== */
 
     private static void studentMenu(DataStore ds, Student student) {
         while (true) {
-            System.out.println("\n[Student] 1) View courses  2) Register  3) View marks"
-                    + "  4) Transcript  5) Rate teacher  6) Set supervisor  7) Research  0) Logout");
-            switch (prompt("> ")) {
-                case "1":
-                    ds.getCourses().forEach(c -> System.out.println("  " + c.getCourseCode()
-                            + "  " + c.getName() + "  (year " + c.getTargetYear()
-                            + ", " + c.getCredits() + "cr)"));
-                    break;
-                case "2":
-                    Course c = pickCourse(ds);
-                    if (c != null) {
-                        try {
-                            student.registerForCourse(c);
-                            System.out.println("Submitted — awaiting Manager approval.");
-                        } catch (CreditLimitException | MaxFailedReachedException ex) {
-                            System.out.println("Blocked: " + ex.getMessage());
-                        } catch (Exception ex) {
-                            System.out.println("Blocked: " + ex.getMessage());
-                        }
-                    }
-                    break;
-                case "3":
-                    student.viewMarks().forEach((k, v) ->
-                            System.out.println("  " + k.getCourseCode() + " : " + v.getLetter()
-                                    + " (" + v.getTotal() + ")"));
-                    break;
-                case "4":
-                    System.out.println(student.getTranscript());
-                    break;
-                case "5":
-                    Teacher t = pickTeacher(ds);
-                    if (t != null) {
-                        student.rateTeacher(t, Double.parseDouble(prompt("Rating (0-5): ")));
-                        System.out.println("Rated.");
-                    }
-                    break;
-                case "6":
-                    User sup = pickUser(ds);
-                    if (sup instanceof Researcher) {
-                        try {
-                            student.setSupervisor((Researcher) sup);
-                            System.out.println("Supervisor set.");
-                        } catch (LowHIndexException ex) {
-                            System.out.println("Blocked: " + ex.getMessage());
-                        }
-                    } else {
-                        System.out.println("Not a researcher.");
-                    }
-                    break;
-                case "7":
-                    researcherSubMenu(ds, student);
-                    break;
-                case "0":
-                    return;
-                default:
-                    System.out.println("?");
+            screen(student, new String[] {
+                    "1  View courses",
+                    "2  Register for a course",
+                    "3  View marks",
+                    "4  Full transcript",
+                    "5  Rate teacher",
+                    "6  Set supervisor (4th year only)",
+                    "7  Research",
+                    "0  Logout",
+            });
+            switch (prompt("  > ")) {
+                case "1": viewCourses(ds);                        pause(); break;
+                case "2": registerFlow(ds, student);              pause(); break;
+                case "3": viewMarks(student);                     pause(); break;
+                case "4": transcript(student);                    pause(); break;
+                case "5": rateTeacherFlow(ds, student);           pause(); break;
+                case "6": setSupervisorFlow(ds, student);         pause(); break;
+                case "7": researcherSubMenu(ds, student);         break;
+                case "0": return;
+                default : err("Unknown option."); pause();
             }
+        }
+    }
+
+    private static void viewCourses(DataStore ds) {
+        section("Courses (" + ds.getCourses().size() + ")");
+        ds.getCourses().forEach(c -> System.out.printf(
+                "  %-8s  %-30s  year %d, %d credits%n",
+                c.getCourseCode(), c.getName(),
+                c.getTargetYear(), c.getCredits()));
+    }
+
+    private static void registerFlow(DataStore ds, Student student) {
+        section("Register for a course");
+        Course c = pickCourse(ds); if (c == null) { info("Cancelled."); return; }
+        try {
+            student.registerForCourse(c);
+            ok("Registration request submitted — awaiting Manager approval.");
+        } catch (CreditLimitException | MaxFailedReachedException ex) {
+            err(ex.getMessage());
+        } catch (Exception ex) {
+            err(ex.getMessage());
+        }
+    }
+
+    private static void viewMarks(Student student) {
+        section("My marks");
+        if (student.viewMarks().isEmpty()) {
+            info("No marks yet.");
+            return;
+        }
+        student.viewMarks().forEach((k, v) -> System.out.printf(
+                "  %-8s  %s  (%.1f)%n",
+                k.getCourseCode(), v.getLetter(), v.getTotal()));
+    }
+
+    private static void transcript(Student student) {
+        section("Transcript");
+        System.out.println(student.getTranscript());
+    }
+
+    private static void rateTeacherFlow(DataStore ds, Student student) {
+        section("Rate teacher");
+        Teacher t = pickTeacher(ds); if (t == null) { info("Cancelled."); return; }
+        try {
+            double rating = Double.parseDouble(prompt("  Rating (0-5) : "));
+            student.rateTeacher(t, rating);
+            ok("Rated.");
+        } catch (Exception e) {
+            err("Invalid rating.");
+        }
+    }
+
+    private static void setSupervisorFlow(DataStore ds, Student student) {
+        section("Set research supervisor");
+        info("Supervisor must be a Researcher with h-index >= 3.");
+        User sup = pickUser(ds); if (sup == null) { info("Cancelled."); return; }
+        if (!(sup instanceof Researcher)) {
+            err("That user is not a researcher.");
+            return;
+        }
+        try {
+            student.setSupervisor((Researcher) sup);
+            ok("Supervisor set: " + sup.getFullName());
+        } catch (LowHIndexException ex) {
+            err(ex.getMessage());
+        } catch (Exception ex) {
+            err(ex.getMessage());
         }
     }
 
     /* ===================== Researcher Employee ===================== */
 
-    private static void researcherMenu(DataStore ds, ResearcherEmployee re) {
+    private static void researcherEmployeeMenu(DataStore ds, ResearcherEmployee re) {
         researcherSubMenu(ds, re);
     }
 
     private static void researcherSubMenu(DataStore ds, Researcher r) {
         while (true) {
-            System.out.println("\n  [Researcher] 1) Publish paper  2) Print my papers"
-                    + "  3) H-index  4) All university papers  5) Top cited  0) Back");
+            screen("Research · " + r.getResearcherName(), new String[] {
+                    "1  Publish paper",
+                    "2  Print my papers (sortable)",
+                    "3  Show my h-index",
+                    "4  All university papers (sortable)",
+                    "5  Top cited researcher (university-wide)",
+                    "0  Back",
+            });
             switch (prompt("  > ")) {
-                case "1":
-                    publishPaperFlow(r);
-                    break;
+                case "1": publishPaperFlow(r);                    pause(); break;
                 case "2":
-                    Comparator<ResearchPaper> cmp = pickComparator();
-                    r.printPapers(cmp);
+                    section("My papers");
+                    r.printPapers(pickComparator());
+                    pause();
                     break;
                 case "3":
-                    System.out.println("  h-index = " + r.calculateHIndex());
+                    section("H-index");
+                    System.out.println("  " + BOLD + r.calculateHIndex() + RESET);
+                    pause();
                     break;
                 case "4":
+                    section("All university papers");
                     ds.printAllUniversityPapers(pickComparator());
+                    pause();
                     break;
                 case "5":
+                    section("Top cited researcher");
                     ds.printTopCitedResearcher();
+                    pause();
                     break;
-                case "0":
-                    return;
-                default:
-                    System.out.println("?");
+                case "0": return;
+                default : err("Unknown option."); pause();
             }
         }
     }
 
     private static void publishPaperFlow(Researcher r) {
+        section("Publish a research paper");
         try {
-            String title  = prompt("Title: ");
-            String journal = prompt("Journal: ");
-            String doi    = prompt("DOI: ");
-            int pages     = Integer.parseInt(prompt("Pages: "));
-            int citations = Integer.parseInt(prompt("Citations: "));
-            ResearchPaper p = new ResearchPaper(title, Arrays.asList(r), journal,
+            String title  = prompt("  Title      : ");
+            String journ  = prompt("  Journal    : ");
+            String doi    = prompt("  DOI        : ");
+            int pages     = Integer.parseInt(prompt("  Pages      : "));
+            int citations = Integer.parseInt(prompt("  Citations  : "));
+            ResearchPaper p = new ResearchPaper(title, Arrays.asList(r), journ,
                     pages, citations, new Date(), doi, "");
             r.publishPaper(p);
-            System.out.println("Published: " + p);
+            ok("Published: " + p);
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            err(e.getMessage());
         }
     }
 
     private static Comparator<ResearchPaper> pickComparator() {
-        System.out.println("    Sort by: 1) Date  2) Citations  3) Pages");
-        switch (prompt("    > ")) {
+        System.out.println();
+        System.out.println("  Sort by:");
+        System.out.println("    1  Date (newest first)");
+        System.out.println("    2  Citations (most first)");
+        System.out.println("    3  Pages (longest first)");
+        switch (prompt("  > ")) {
             case "2": return new CitationsComparator();
             case "3": return new PaperLengthComparator();
             default:  return new DateComparator();
@@ -458,41 +610,51 @@ public class UniversityCLI {
     /* ===================== Pickers ===================== */
 
     private static User pickUser(DataStore ds) {
-        List<User> users = ds.getUsers();
-        for (int i = 0; i < users.size(); i++) {
-            System.out.println("  " + (i + 1) + ") " + users.get(i).getLogin()
-                    + "  " + users.get(i).getFullName());
+        System.out.println();
+        List<User> list = ds.getUsers();
+        for (int i = 0; i < list.size(); i++) {
+            System.out.printf("    %2d) %-12s %-25s %s%n",
+                    i + 1, list.get(i).getLogin(),
+                    list.get(i).getFullName(),
+                    DIM + list.get(i).getClass().getSimpleName() + RESET);
         }
-        int idx = parseIdx(prompt("Index (0=cancel): "), users.size());
-        return idx < 0 ? null : users.get(idx);
+        return pickFrom(list);
     }
 
     private static Student pickStudent(DataStore ds) {
+        System.out.println();
         List<Student> list = ds.getStudents();
         for (int i = 0; i < list.size(); i++) {
-            System.out.println("  " + (i + 1) + ") " + list.get(i).getFullName());
+            System.out.printf("    %2d) %s%n", i + 1, list.get(i).getFullName());
         }
-        int idx = parseIdx(prompt("Index (0=cancel): "), list.size());
-        return idx < 0 ? null : list.get(idx);
+        return pickFrom(list);
     }
 
     private static Teacher pickTeacher(DataStore ds) {
+        System.out.println();
         List<Teacher> list = ds.getTeachers();
         for (int i = 0; i < list.size(); i++) {
-            System.out.println("  " + (i + 1) + ") " + list.get(i).getFullName()
-                    + " (" + list.get(i).getTitle() + ")");
+            System.out.printf("    %2d) %-25s %s%n",
+                    i + 1, list.get(i).getFullName(),
+                    DIM + list.get(i).getTitle() + RESET);
         }
-        int idx = parseIdx(prompt("Index (0=cancel): "), list.size());
-        return idx < 0 ? null : list.get(idx);
+        return pickFrom(list);
     }
 
     private static Course pickCourse(DataStore ds) {
+        System.out.println();
         List<Course> list = ds.getCourses();
         for (int i = 0; i < list.size(); i++) {
-            System.out.println("  " + (i + 1) + ") " + list.get(i).getCourseCode()
-                    + "  " + list.get(i).getName());
+            System.out.printf("    %2d) %-8s %s%n",
+                    i + 1, list.get(i).getCourseCode(),
+                    list.get(i).getName());
         }
-        int idx = parseIdx(prompt("Index (0=cancel): "), list.size());
+        return pickFrom(list);
+    }
+
+    private static <T> T pickFrom(List<T> list) {
+        if (list.isEmpty()) { info("List is empty."); return null; }
+        int idx = parseIdx(prompt("  Index (0 = cancel) : "), list.size());
         return idx < 0 ? null : list.get(idx);
     }
 
@@ -503,7 +665,69 @@ public class UniversityCLI {
         } catch (Exception e) { return -1; }
     }
 
-    /* ===================== Helpers ===================== */
+    /* ===================== UI helpers ===================== */
+
+    /** Clears the screen on ANSI-capable terminals. */
+    private static void clear() {
+        System.out.print("\033[2J\033[H");
+        System.out.flush();
+    }
+
+    private static void banner() {
+        clear();
+        System.out.println();
+        System.out.println(CYAN + "  ╔══════════════════════════════════════════════════════╗" + RESET);
+        System.out.println(CYAN + "  ║" + BOLD + "       University Information System — CLI            " + RESET + CYAN + "║" + RESET);
+        System.out.println(CYAN + "  ╚══════════════════════════════════════════════════════╝" + RESET);
+        System.out.println();
+        System.out.println(DIM + "  Demo credentials (login / password):" + RESET);
+        System.out.println(DIM + "    admin       / admin   (Admin)" + RESET);
+        System.out.println(DIM + "    manager     / m1      (Manager)" + RESET);
+        System.out.println(DIM + "    prof.smith  / p1      (Teacher, professor)" + RESET);
+        System.out.println(DIM + "    tutor.kim   / t1      (Teacher)" + RESET);
+        System.out.println(DIM + "    rex         / r1      (Researcher employee)" + RESET);
+        System.out.println(DIM + "    alibek      / s1      (Student, year 4)" + RESET);
+        System.out.println();
+    }
+
+    private static void screen(User user, String[] options) {
+        screen(user.getClass().getSimpleName() + " · " + user.getFullName(), options);
+    }
+
+    private static void screen(String title, String[] options) {
+        clear();
+        System.out.println();
+        System.out.println(CYAN + "  ──────────────────────────────────────────────────────" + RESET);
+        System.out.println("  " + BOLD + title + RESET);
+        System.out.println(CYAN + "  ──────────────────────────────────────────────────────" + RESET);
+        System.out.println();
+        for (String opt : options) {
+            System.out.println("    " + opt);
+        }
+        System.out.println();
+    }
+
+    private static void section(String title) {
+        System.out.println();
+        System.out.println(MAGENTA + "  ── " + title + " ──" + RESET);
+        System.out.println();
+    }
+
+    private static void line() {
+        System.out.println(CYAN + "  ──────────────────────────────────────────────────────" + RESET);
+    }
+
+    private static void ok(String msg)   { System.out.println(GREEN  + "  ✓ " + msg + RESET); }
+    private static void err(String msg)  { System.out.println(RED    + "  ✗ " + msg + RESET); }
+    private static void info(String msg) { System.out.println(YELLOW + "  • " + msg + RESET); }
+
+    private static void pause() {
+        System.out.println();
+        System.out.print(DIM + "  Press Enter to continue..." + RESET);
+        try { IN.nextLine(); } catch (Exception ignored) {}
+    }
+
+    /* ===================== Input helpers ===================== */
 
     private static String prompt(String msg) {
         System.out.print(msg);
@@ -517,24 +741,6 @@ public class UniversityCLI {
             return p == null ? "" : new String(p);
         }
         return prompt(msg);
-    }
-
-    private static User findUser(DataStore ds, String login) {
-        for (User u : ds.getUsers()) if (u.getLogin().equals(login)) return u;
-        return null;
-    }
-
-    private static void banner() {
-        System.out.println();
-        System.out.println("==========================================");
-        System.out.println("  University Information System — CLI");
-        System.out.println("==========================================");
-        System.out.println("Demo credentials (login / password):");
-        System.out.println("  admin     / admin    (Admin)");
-        System.out.println("  manager   / m1       (Manager)");
-        System.out.println("  prof.smith/ p1       (Teacher, researcher)");
-        System.out.println("  alibek    / s1       (Student, year 4)");
-        System.out.println("  rex       / r1       (Researcher employee)");
     }
 
     /* ===================== Seed ===================== */
