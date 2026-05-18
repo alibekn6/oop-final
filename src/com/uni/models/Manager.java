@@ -62,7 +62,11 @@ public class Manager extends Employee {
         com.uni.storage.DataStore.getInstance().addCourse(course);
     }
 
-    /** Returns a multi-line statistical report about a course. */
+    /**
+     * Returns a multi-line statistical report about a course. Students whose
+     * marks are still all zeros (registered but never graded) are reported
+     * separately as 'pending' instead of being counted as failed.
+     */
     public String createStatisticalReport(Course course) {
         if (course == null) return "(no course)";
         List<Student> students = course.getStudents();
@@ -70,22 +74,35 @@ public class Manager extends Employee {
             return "Report for " + course.getCourseCode() + ": no enrolled students.";
         }
         double sum = 0;
-        int passed = 0, failed = 0;
+        int passed = 0, failed = 0, pending = 0, graded = 0;
         for (Student s : students) {
             Mark m = s.getTranscriptMap().get(course);
-            if (m == null) continue;
+            if (m == null || isEmptyMark(m)) {
+                pending++;
+                continue;
+            }
+            graded++;
             sum += m.getTotal();
             if (m.isPassed()) passed++;
             else failed++;
         }
-        double avg = sum / students.size();
+        String avg = graded == 0 ? "n/a" : String.format("%.2f", sum / graded);
+        String failPct = graded == 0
+                ? "n/a"
+                : String.format("%.1f%%", 100.0 * failed / graded);
         return "Report for " + course.getCourseCode() + ":\n"
                 + "  enrolled : " + students.size() + "\n"
-                + "  average  : " + String.format("%.2f", avg) + "\n"
+                + "  graded   : " + graded + "\n"
+                + "  average  : " + avg + "\n"
                 + "  passed   : " + passed + "\n"
-                + "  failed   : " + failed
-                + " (" + String.format("%.1f", 100.0 * failed / students.size())
-                + "%)";
+                + "  failed   : " + failed + " (" + failPct + ")\n"
+                + "  pending  : " + pending;
+    }
+
+    private static boolean isEmptyMark(Mark m) {
+        return m.getFirstAttestation() == 0
+                && m.getSecondAttestation() == 0
+                && m.getFinalExam() == 0;
     }
 
     public List<Student> viewStudents(Comparator<Student> comparator) {
