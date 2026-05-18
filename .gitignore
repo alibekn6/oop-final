@@ -2,7 +2,6 @@
 *.ser
 out/
 build/
-docs/
 .DS_Store
 .idea/
 *.iml
